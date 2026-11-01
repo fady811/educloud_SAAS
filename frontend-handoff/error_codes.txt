@@ -1,0 +1,134 @@
+################################################################################
+# EduCloud LMS — Error Codes Reference
+# Source: apps/core/enums.py (ErrorCode) + apps/core/errors.py (exception_handler)
+# READ-ONLY snapshot — do not edit the source
+################################################################################
+
+## COMPLETE ErrorCode ENUM (apps/core/enums.py:277–336)
+
+# Auth
+INVALID_CREDENTIALS         → HTTP 422  (raised in LoginView when authenticate() returns None)
+ACCOUNT_NOT_VERIFIED        → HTTP 422  (raised in LoginView when user.is_verified is False)
+TOKEN_EXPIRED               → HTTP 422  (raised by token validation services; no direct view reference found in read files)
+TOKEN_INVALID               → HTTP 422  (raised by token validation services; no direct view reference found in read files)
+LOGIN_BLOCKED               → HTTP 429  (raised by ThrottledError / DRF Throttled → exception_handler)
+SESSION_REVOKED             → HTTP ???  (defined in enum; NOT raised in any view read — UNKNOWN where raised)
+
+# Workspace
+WORKSPACE_NOT_ACTIVE        → HTTP ???  (defined; likely raised in TenantResolverMiddleware or lifecycle service — not in views read)
+WORKSPACE_FROZEN            → HTTP ???  (defined; likely raised in lifecycle/middleware — not in views read)
+WORKSPACE_DEACTIVATED       → HTTP ???  (defined; likely raised in lifecycle/middleware — not in views read)
+GRACE_PERIOD_RESTRICTED     → HTTP ???  (defined; likely raised by GracePeriodGate — not confirmed)
+SUBDOMAIN_TAKEN             → HTTP 409  (defined; likely raised in subdomain check service)
+ILLEGAL_TRANSITION          → HTTP ???  (defined; likely raised in workspace lifecycle transitions)
+
+# Enrollment
+ALREADY_ENROLLED            → HTTP 409  (defined; likely raised in enrollment service)
+NOT_ENROLLED                → HTTP ???  (defined)
+ENROLLMENT_EXPIRED          → HTTP ???  (defined)
+ACCESS_DENIED               → HTTP 403  (defined)
+HAS_ACTIVE_PAID_ENROLLMENTS → HTTP ???  (defined)
+
+# Groups
+GROUP_FULL                  → HTTP ???  (defined)
+ALREADY_IN_GROUP_FOR_SUBJECT→ HTTP ???  (defined)
+
+# Billing
+SUBSCRIPTION_ACTIVE         → HTTP ???  (defined)
+SUBSCRIPTION_NOT_FOUND      → HTTP ???  (defined)
+PAYMENT_PENDING             → HTTP ???  (defined)
+DUPLICATE_PAYMENT           → HTTP ???  (defined)
+QUOTE_STALE                 → HTTP ???  (defined)
+UPGRADE_WOULD_SHORTEN_PERIOD→ HTTP ???  (defined)
+UPGRADE_MIN_CHARGE          → HTTP ???  (defined)
+UPGRADE_MIN_REMAINING       → HTTP ???  (defined)
+UPGRADE_NOT_ELIGIBLE        → HTTP ???  (defined)
+
+# Payments
+POSSIBLE_DUPLICATE_PROOF    → HTTP ???  (defined)
+REJECTION_REASON_REQUIRED   → HTTP ???  (defined)
+OVER_REFUND                 → HTTP ???  (defined)
+
+# Limits
+LIMIT_EXCEEDED              → HTTP 409  (from LimitExceeded exception class; includes limit_key, limit, current, remedy)
+
+# Exams
+ATTEMPT_EXPIRED             → HTTP ???  (defined)
+ALREADY_SUBMITTED           → HTTP ???  (defined)
+STALE_VERSION               → HTTP ???  (defined)
+ATTEMPT_LIMIT_REACHED       → HTTP ???  (defined)
+
+# Files
+FILE_QUARANTINED            → HTTP ???  (defined)
+FILE_PENDING_SCAN           → HTTP ???  (defined)
+FILE_TYPE_NOT_ALLOWED       → HTTP ???  (defined)
+FILE_TOO_LARGE              → HTTP ???  (defined)
+PATH_TRAVERSAL              → HTTP ???  (defined)
+
+# Generic
+NOT_FOUND                   → HTTP 404  (raised everywhere via NotFound domain exception; also via Http404)
+PERMISSION_DENIED           → HTTP 403  (raised by DRF PermissionDenied and PermissionDeniedError)
+VALIDATION_ERROR            → HTTP 422  (raised by ValidationFailed domain exception)
+                                        (also used for DRF ValidationError → HTTP 400 actually, see below)
+CONFLICT                    → HTTP 409  (raised by Conflict domain exception)
+INTERNAL_ERROR              → HTTP 500  (fallback for unhandled exceptions)
+EXTERNAL_SERVICE_ERROR      → HTTP 503  (raised by ExternalServiceError)
+EXPORT_FORMAT_NOT_SUPPORTED → HTTP ???  (defined; UNKNOWN if raised anywhere — not seen in read files)
+
+## HTTP STATUS MAPPING (from apps/core/errors.py exception_handler)
+
+Domain exceptions use their class's http_status:
+  ValidationFailed      → 422 (HTTP_422_UNPROCESSABLE_ENTITY)
+  NotFound              → 404
+  PermissionDeniedError → 403
+  Conflict              → 409
+  LimitExceeded         → 409
+  ThrottledError        → 429
+  ExternalServiceError  → 503
+  DomainError (base)    → 500
+
+DRF built-ins mapped:
+  NotAuthenticated / AuthenticationFailed → 401 (code: "AUTHENTICATION_REQUIRED" — NOT in ErrorCode enum)
+  PermissionDenied                        → 403 (code: PERMISSION_DENIED)
+  DRFValidationError                      → 400 (code: VALIDATION_ERROR)
+  Throttled                               → 429 (code: LOGIN_BLOCKED)
+  Http404                                 → 404 (code: NOT_FOUND)
+
+## ERROR ENVELOPE SHAPE (all errors)
+
+{
+  "error": {
+    "code": "<ErrorCode value>",
+    "detail": "<human-readable message>",
+    // Additional fields when present:
+    "fields": {...}           // DRF ValidationError only — field-level errors
+    "retry_after": <int>      // ThrottledError / Throttled only — seconds
+    "limit_key": "<key>",     // LimitExceeded only
+    "limit": <number>,
+    "current": <number>,
+    "remedy": "<string>"
+  },
+  "request_id": "<uuid>"
+}
+
+## NOTE: "AUTHENTICATION_REQUIRED" is raised in exception_handler but is NOT in the ErrorCode enum.
+## It is a bare string literal used for NotAuthenticated/AuthenticationFailed responses.
+
+## CODES DEFINED IN ENUM BUT NOT SEEN RAISED IN ANY VIEW/SERVICE READ:
+SESSION_REVOKED, WORKSPACE_NOT_ACTIVE, WORKSPACE_FROZEN, WORKSPACE_DEACTIVATED,
+GRACE_PERIOD_RESTRICTED, ILLEGAL_TRANSITION, ALREADY_ENROLLED, NOT_ENROLLED,
+ENROLLMENT_EXPIRED, ACCESS_DENIED, HAS_ACTIVE_PAID_ENROLLMENTS, GROUP_FULL,
+ALREADY_IN_GROUP_FOR_SUBJECT, SUBSCRIPTION_ACTIVE, SUBSCRIPTION_NOT_FOUND,
+PAYMENT_PENDING, DUPLICATE_PAYMENT, QUOTE_STALE, UPGRADE_WOULD_SHORTEN_PERIOD,
+UPGRADE_MIN_CHARGE, UPGRADE_MIN_REMAINING, UPGRADE_NOT_ELIGIBLE,
+POSSIBLE_DUPLICATE_PROOF, REJECTION_REASON_REQUIRED, OVER_REFUND,
+ATTEMPT_EXPIRED, ALREADY_SUBMITTED, STALE_VERSION, ATTEMPT_LIMIT_REACHED,
+FILE_QUARANTINED, FILE_PENDING_SCAN, FILE_TYPE_NOT_ALLOWED, FILE_TOO_LARGE,
+PATH_TRAVERSAL, SUBDOMAIN_TAKEN, EXPORT_FORMAT_NOT_SUPPORTED
+(These are almost certainly raised in service-layer files not yet read.
+ They exist and are reachable — just not verified from views directly.)
+
+## ARABIC MESSAGE TEMPLATES
+NOT IMPLEMENTED — the codebase uses English detail strings throughout.
+LANGUAGE_CODE="ar" is set but no Arabic error message templates were found
+in the files read. All error detail strings in exceptions and error_handler are English.

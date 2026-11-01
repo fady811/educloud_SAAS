@@ -1,0 +1,8 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape from communication/serializers.py NOT READ.",
+  "_endpoint": "GET /api/v1/announcements/",
+  "_status": 200,
+  "_paginated": true,
+  "_ordering": "-published_at",
+  "UNKNOWN": "apps/communication/serializers.py was not read. Expected fields from model: id, author, scope, target_id, title, body_html, is_pinned, published_at."
+}

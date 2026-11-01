@@ -1,0 +1,7 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape from communication/serializers.py NOT READ.",
+  "_endpoint": "GET /api/v1/messages/?conversation=<id>",
+  "_status": 200,
+  "_etag": "Response includes ETag header. 304 returned if If-None-Match matches.",
+  "UNKNOWN": "apps/communication/serializers.py was not read."
+}

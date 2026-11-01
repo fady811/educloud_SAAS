@@ -1,0 +1,18 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from NotificationSerializer (serializer file not read — shape inferred from model).",
+  "_endpoint": "GET /api/v1/notifications/",
+  "_status": 200,
+  "_paginated": true,
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 100,
+      "category": "EXAM_PUBLISHED",
+      "payload": {"exam_id": 7, "title": "Chapter 1 Quiz"},
+      "read_at": null,
+      "created_at": "2026-01-10T08:00:00Z"
+    }
+  ]
+}

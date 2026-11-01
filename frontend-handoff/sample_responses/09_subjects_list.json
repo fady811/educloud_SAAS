@@ -1,0 +1,22 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from SubjectSerializer.",
+  "_endpoint": "GET /api/v1/subjects/",
+  "_status": 200,
+  "_shape": "list (NOT paginated — no pagination class on SubjectListCreateView)",
+  "data": [
+    {
+      "id": 1,
+      "name": "Mathematics",
+      "grade_level": "SEC_3",
+      "color": "#3B82F6",
+      "archived_at": null
+    },
+    {
+      "id": 2,
+      "name": "Physics",
+      "grade_level": "SEC_3",
+      "color": "#EF4444",
+      "archived_at": null
+    }
+  ]
+}

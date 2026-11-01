@@ -1,0 +1,7 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape from communication/serializers.py NOT READ.",
+  "_endpoint": "GET /api/v1/conversations/",
+  "_status": 200,
+  "_paginated": true,
+  "UNKNOWN": "apps/communication/serializers.py was not read."
+}

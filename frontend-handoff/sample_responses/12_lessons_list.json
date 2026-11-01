@@ -1,0 +1,26 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from LessonSerializer.",
+  "_endpoint": "GET /api/v1/courses/{course_id}/lessons/",
+  "_status": 200,
+  "_shape": "list (NOT paginated), ordered by `order` field",
+  "data": [
+    {
+      "id": 20,
+      "title": "Introduction to Algebra",
+      "parent_type": "COURSE",
+      "parent_id": 10,
+      "order": 1,
+      "is_free_preview": true,
+      "archived_at": null
+    },
+    {
+      "id": 21,
+      "title": "Variables and Expressions",
+      "parent_type": "COURSE",
+      "parent_id": 10,
+      "order": 2,
+      "is_free_preview": false,
+      "archived_at": null
+    }
+  ]
+}

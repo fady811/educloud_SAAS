@@ -1,0 +1,19 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from CourseSerializer.",
+  "_endpoint": "GET /api/v1/courses/",
+  "_status": 200,
+  "_shape": "list (NOT paginated — no pagination class on CourseListCreateView)",
+  "data": [
+    {
+      "id": 10,
+      "title": "Algebra Fundamentals",
+      "description": "Complete algebra course for year 3",
+      "visibility": "PUBLISHED",
+      "pricing_type": "ONE_TIME",
+      "price": "150.00",
+      "subject_id": 1,
+      "archived_at": null,
+      "created_at": "2026-01-01T10:00:00Z"
+    }
+  ]
+}

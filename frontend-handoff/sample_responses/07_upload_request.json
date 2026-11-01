@@ -1,0 +1,7 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape from apps/files/services/upload.py NOT READ — shape unknown.",
+  "_endpoint": "POST /api/v1/files/upload/",
+  "_status": 201,
+  "UNKNOWN": "Shape of presigned upload response depends on apps/files/services/upload.py which was not read.",
+  "expected_fields": ["upload_url", "file_id", "possibly PUT headers/fields"]
+}

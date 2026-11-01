@@ -1,0 +1,4 @@
+All 28 sample response files are code-derived (not from a live DB).
+PostgreSQL was not available in the handoff container.
+Shapes are accurate to the serializer definitions read from source.
+Actual field values (IDs, timestamps) are illustrative.

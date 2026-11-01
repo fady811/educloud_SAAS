@@ -1,0 +1,24 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from ExamSerializer.",
+  "_endpoint": "GET /api/v1/exams/",
+  "_status": 200,
+  "_paginated": true,
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 7,
+      "lesson": 20,
+      "title": "Chapter 1 Quiz",
+      "instructions": "Answer all questions within 30 minutes.",
+      "duration_minutes": 30,
+      "pass_score": 60,
+      "max_attempts": 2,
+      "shuffle_questions": true,
+      "status": "PUBLISHED",
+      "available_from": "2026-01-10T08:00:00Z",
+      "available_until": "2026-01-31T23:59:59Z"
+    }
+  ]
+}

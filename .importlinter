@@ -1,0 +1,22 @@
+[importlinter]
+root_package = apps
+
+[importlinter:contract:tier-layers]
+name = Tier layering contract
+type = layers
+layers =
+    apps.adminconsole
+    apps.reports | apps.support | apps.parents
+    apps.communication | apps.payments | apps.assessments
+    apps.enrollment
+    apps.groups
+    apps.content
+    apps.files
+    apps.billing
+    apps.notifications
+    apps.workspaces
+    apps.accounts
+    apps.core
+ignore_imports =
+    apps.workspaces.services.lifecycle -> apps.notifications.services.dispatch
+    apps.accounts.services.bulk_import -> apps.workspaces.models

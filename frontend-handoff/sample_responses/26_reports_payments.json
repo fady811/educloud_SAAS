@@ -1,0 +1,11 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from PaymentReportView inline response.",
+  "_endpoint": "GET /api/v1/reports/payments/",
+  "_status": 200,
+  "_shape": "NOT paginated — inline aggregation result",
+  "by_status": [
+    {"status": "PAID", "count": 25, "total_egp": "3750.00"},
+    {"status": "PENDING", "count": 5, "total_egp": "750.00"}
+  ],
+  "paid_total_egp": "3750.00"
+}

@@ -1,0 +1,15 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from StoredFileSerializer.",
+  "_endpoint": "GET /api/v1/files/{id}/",
+  "_status": 200,
+  "id": 101,
+  "key": "workspaces/42/videos/lecture01.mp4",
+  "original_name": "lecture01.mp4",
+  "content_type": "video/mp4",
+  "size_bytes": 157286400,
+  "category": "LESSON_VIDEO",
+  "scan_status": "CLEAN",
+  "is_public": false,
+  "created_at": "2026-01-01T12:00:00Z",
+  "url": "https://r2.example.com/presigned-url?...REDACTED"
+}

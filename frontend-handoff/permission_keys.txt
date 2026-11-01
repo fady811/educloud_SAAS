@@ -1,0 +1,78 @@
+################################################################################
+# EduCloud LMS — Permission Keys Reference
+# Source: apps/accounts/enums.py (PermissionKey) + apps/core/permissions.py
+# READ-ONLY snapshot
+################################################################################
+
+## COMPLETE PermissionKey ENUM (apps/accounts/enums.py:5–37)
+
+Student management:
+  STUDENT_VIEW        — View Students
+  STUDENT_CREATE      — Create Students
+  STUDENT_EDIT        — Edit Students
+  STUDENT_DEACTIVATE  — Deactivate Students
+
+Content management:
+  CONTENT_VIEW        — View Content
+  CONTENT_CREATE      — Create Content
+  CONTENT_EDIT        — Edit Content
+  CONTENT_ARCHIVE     — Archive Content
+
+Group management:
+  GROUP_VIEW          — View Groups
+  GROUP_CREATE        — Create Groups
+  GROUP_EDIT          — Edit Groups
+  GROUP_ASSIGN        — Assign Students to Groups
+
+Assessment management:
+  ASSESSMENT_CREATE   — Create Assessments
+  ASSESSMENT_EDIT     — Edit Assessments
+  ASSESSMENT_GRADE    — Grade Assessments
+
+Payment management:
+  PAYMENT_VIEW        — View Payments
+  PAYMENT_CONFIRM     — Confirm Payments
+  PAYMENT_REJECT      — Reject Payments
+
+Attendance:
+  ATTENDANCE_RECORD       — Record Attendance
+  ATTENDANCE_VIEW_REPORTS — View Attendance Reports
+
+Reports:
+  REPORTS_VIEW        — View Reports
+
+Communication:
+  COMM_ANNOUNCEMENTS  — Send Announcements
+  COMM_DMS            — Send Direct Messages
+
+## PERMISSION SYSTEM MECHANICS (apps/core/permissions.py:40–55)
+
+- Permission keys are stored per (user, workspace) in TeamMemberPermission rows.
+- Absence of a row = DENIED (fail-closed).
+- Workspace OWNERS (is_owner=True WorkspaceMembership) bypass key checks —
+  IsWorkspaceOwner does NOT check TeamMemberPermission rows.
+- SUPER_ADMINs use IsSuperAdmin, not workspace permissions.
+- Views use HasPermissionKey permission class OR call has_permission() directly
+  in the view body (e.g. SubjectListCreateView.post, ParentLinkView.post).
+
+## OWNER-ONLY KEYS (keys that only matter for team members, not owners)
+
+ALL keys above are for team members only. Owners have implicit full access.
+Roles: TEACHER (owner), TEAM_MEMBER (needs explicit grants), STUDENT, PARENT
+  — STUDENT and PARENT roles do not appear to receive TeamMemberPermission grants;
+    the permission system is designed for TEAM_MEMBER granularity.
+
+## DEFAULT SET FOR NEW TEAM MEMBER
+
+UNKNOWN — no service code read that sets default permissions on invite acceptance.
+The apps/accounts/services/team.py file was not read.
+From the model: absence of row = denied. So a fresh TEAM_MEMBER has NO permissions
+by default (fail-closed per REQ-ROLE-02).
+
+## WRITE API
+
+GET  /api/v1/team/{pk}/permissions/ → returns {"keys": [...]}
+PUT  /api/v1/team/{pk}/permissions/ → body {"keys": ["KEY1","KEY2",...]}
+     Replaces ALL permissions atomically (deletes old, inserts new).
+     Invalid keys raise VALIDATION_ERROR.
+     Requires IsWorkspaceOwner.

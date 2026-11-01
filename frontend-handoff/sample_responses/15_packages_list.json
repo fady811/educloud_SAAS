@@ -1,0 +1,26 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from PackageSerializer.",
+  "_endpoint": "GET /api/v1/packages/",
+  "_status": 200,
+  "_permission": "Public (no auth required)",
+  "_paginated": true,
+  "count": 3,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "name": "Starter",
+      "slug": "starter",
+      "description": "Up to 50 students",
+      "price_egp": "299.00",
+      "duration_months": 1,
+      "max_students": 50,
+      "storage_gb": "5.00",
+      "max_subjects_courses": 5,
+      "max_groups": 10,
+      "max_team_members": 2,
+      "display_order": 1
+    }
+  ]
+}

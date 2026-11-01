@@ -1,0 +1,20 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from GroupSerializer.",
+  "_endpoint": "GET /api/v1/groups/",
+  "_status": 200,
+  "_shape": "list (NOT paginated)",
+  "data": [
+    {
+      "id": 5,
+      "name": "Group A - Math SEC3",
+      "subject_id": 1,
+      "teacher_id": 1,
+      "status": "ACTIVE",
+      "max_students": 30,
+      "color": "#3B82F6",
+      "description": "Saturday morning group",
+      "archived_at": null,
+      "created_at": "2026-01-01T10:00:00Z"
+    }
+  ]
+}

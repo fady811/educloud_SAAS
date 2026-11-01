@@ -1,0 +1,12 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from WorkspaceBrandingView GET (returns ws.settings_json).",
+  "_endpoint": "GET /api/v1/workspace/branding/",
+  "_status": 200,
+  "display_name": "My School",
+  "logo_file_id": 5,
+  "theme": "DEFAULT",
+  "primary_color": "#3B82F6",
+  "landing_text": "Welcome to My School",
+  "description": "",
+  "meta": {"title": "My School", "description": ""}
+}

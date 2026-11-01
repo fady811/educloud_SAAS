@@ -1,0 +1,20 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from WorkspaceSerializer.",
+  "_endpoint": "POST /api/v1/workspaces/",
+  "_status": 201,
+  "id": 42,
+  "subdomain": "myschool",
+  "display_name": "My School",
+  "status": "SETUP",
+  "grace_period_days": 7,
+  "settings_json": {
+    "display_name": "My School",
+    "logo_file_id": null,
+    "theme": "DEFAULT",
+    "primary_color": "#3B82F6",
+    "landing_text": "",
+    "description": "",
+    "meta": {"title": "", "description": ""}
+  },
+  "created_at": "2026-01-01T10:00:00Z"
+}

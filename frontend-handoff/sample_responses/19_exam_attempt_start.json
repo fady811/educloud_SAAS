@@ -1,0 +1,13 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from ExamAttemptSerializer.",
+  "_endpoint": "POST /api/v1/exam-attempts/start/",
+  "_status": 201,
+  "id": 15,
+  "exam": 7,
+  "student": 2,
+  "status": "IN_PROGRESS",
+  "started_at": "2026-01-15T09:00:00Z",
+  "submitted_at": null,
+  "deadline_at": "2026-01-15T09:30:00Z",
+  "score": null
+}

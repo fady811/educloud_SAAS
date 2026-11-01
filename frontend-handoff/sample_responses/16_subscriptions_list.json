@@ -1,0 +1,20 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from SubscriptionSerializer.",
+  "_endpoint": "GET /api/v1/subscriptions/",
+  "_status": 200,
+  "_paginated": true,
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 3,
+      "package": 1,
+      "status": "ACTIVE",
+      "starts_at": "2026-01-01T00:00:00Z",
+      "ends_at": "2026-02-01T00:00:00Z",
+      "entitlement_snapshot": {"max_students": 50, "storage_gb": "5.00"},
+      "proration_credit_egp": "0.00"
+    }
+  ]
+}

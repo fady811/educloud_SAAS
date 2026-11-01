@@ -1,0 +1,6 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Serializer shape UNKNOWN (apps/payments/serializers.py not read).",
+  "_endpoint": "GET /api/v1/student-payments/",
+  "_status": 200,
+  "UNKNOWN": "apps/payments/serializers.py was not read. Expected fields from model: id, student, payment_model, amount_egp, status, source, payment_method, proof_file_id, submitted_at, reviewed_at, notes, enrollable_type, enrollable_id, period_start, period_end."
+}

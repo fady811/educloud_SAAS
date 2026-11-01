@@ -1,0 +1,1170 @@
+{
+  "ActorType": {
+    "module": "core",
+    "values": [
+      {
+        "value": "USER",
+        "label": "User"
+      },
+      {
+        "value": "SYSTEM",
+        "label": "System"
+      },
+      {
+        "value": "ADMIN",
+        "label": "Admin"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "AddonStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "PENDING",
+        "label": "Pending"
+      },
+      {
+        "value": "ACTIVE",
+        "label": "Active"
+      },
+      {
+        "value": "EXPIRED",
+        "label": "Expired"
+      },
+      {
+        "value": "CANCELLED",
+        "label": "Cancelled"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "AddonType": {
+    "module": "core",
+    "values": [
+      {
+        "value": "STUDENT_SLOTS",
+        "label": "Student Slots"
+      },
+      {
+        "value": "STORAGE_GB",
+        "label": "Storage GB"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "AnnouncementScope": {
+    "module": "core",
+    "values": [
+      {
+        "value": "WORKSPACE",
+        "label": "Workspace"
+      },
+      {
+        "value": "SUBJECT",
+        "label": "Subject"
+      },
+      {
+        "value": "COURSE",
+        "label": "Course"
+      },
+      {
+        "value": "GROUP",
+        "label": "Group"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "AttemptStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "IN_PROGRESS",
+        "label": "In Progress"
+      },
+      {
+        "value": "SUBMITTED",
+        "label": "Submitted"
+      },
+      {
+        "value": "GRADED",
+        "label": "Graded"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "AttendanceStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "PRESENT",
+        "label": "Present"
+      },
+      {
+        "value": "ABSENT",
+        "label": "Absent"
+      },
+      {
+        "value": "LATE",
+        "label": "Late"
+      },
+      {
+        "value": "EXCUSED",
+        "label": "Excused"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "CustomDomainStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "PENDING_DNS",
+        "label": "Pending DNS"
+      },
+      {
+        "value": "VERIFYING",
+        "label": "Verifying"
+      },
+      {
+        "value": "ACTIVE",
+        "label": "Active"
+      },
+      {
+        "value": "FAILED",
+        "label": "Failed"
+      },
+      {
+        "value": "DETACHED",
+        "label": "Detached"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "DeactivationCause": {
+    "module": "core",
+    "values": [
+      {
+        "value": "NON_PAYMENT",
+        "label": "Non-Payment"
+      },
+      {
+        "value": "ADMIN_ACTION",
+        "label": "Admin Action"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "EnrollableType": {
+    "module": "core",
+    "values": [
+      {
+        "value": "SUBJECT",
+        "label": "Subject"
+      },
+      {
+        "value": "COURSE",
+        "label": "Course"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "EnrollmentStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "ACTIVE",
+        "label": "Active"
+      },
+      {
+        "value": "SUSPENDED",
+        "label": "Suspended"
+      },
+      {
+        "value": "COMPLETED",
+        "label": "Completed"
+      },
+      {
+        "value": "CANCELLED",
+        "label": "Cancelled"
+      },
+      {
+        "value": "EXPIRED",
+        "label": "Expired"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "ErrorCode": {
+    "module": "core",
+    "values": [
+      {
+        "value": "INVALID_CREDENTIALS",
+        "label": "Invalid credentials"
+      },
+      {
+        "value": "ACCOUNT_NOT_VERIFIED",
+        "label": "Account not verified"
+      },
+      {
+        "value": "TOKEN_EXPIRED",
+        "label": "Token expired"
+      },
+      {
+        "value": "TOKEN_INVALID",
+        "label": "Token invalid"
+      },
+      {
+        "value": "LOGIN_BLOCKED",
+        "label": "Login blocked"
+      },
+      {
+        "value": "SESSION_REVOKED",
+        "label": "Session revoked"
+      },
+      {
+        "value": "WORKSPACE_NOT_ACTIVE",
+        "label": "Workspace not active"
+      },
+      {
+        "value": "WORKSPACE_FROZEN",
+        "label": "Workspace frozen"
+      },
+      {
+        "value": "WORKSPACE_DEACTIVATED",
+        "label": "Workspace deactivated"
+      },
+      {
+        "value": "GRACE_PERIOD_RESTRICTED",
+        "label": "Action restricted in grace period"
+      },
+      {
+        "value": "SUBDOMAIN_TAKEN",
+        "label": "Subdomain taken"
+      },
+      {
+        "value": "ILLEGAL_TRANSITION",
+        "label": "Illegal state transition"
+      },
+      {
+        "value": "ALREADY_ENROLLED",
+        "label": "Already enrolled"
+      },
+      {
+        "value": "NOT_ENROLLED",
+        "label": "Not enrolled"
+      },
+      {
+        "value": "ENROLLMENT_EXPIRED",
+        "label": "Enrollment expired"
+      },
+      {
+        "value": "ACCESS_DENIED",
+        "label": "Access denied"
+      },
+      {
+        "value": "HAS_ACTIVE_PAID_ENROLLMENTS",
+        "label": "Has active paid enrollments"
+      },
+      {
+        "value": "GROUP_FULL",
+        "label": "Group is full"
+      },
+      {
+        "value": "ALREADY_IN_GROUP_FOR_SUBJECT",
+        "label": "Already in a group for this subject"
+      },
+      {
+        "value": "SUBSCRIPTION_ACTIVE",
+        "label": "Subscription already active"
+      },
+      {
+        "value": "SUBSCRIPTION_NOT_FOUND",
+        "label": "Subscription not found"
+      },
+      {
+        "value": "PAYMENT_PENDING",
+        "label": "Payment already pending"
+      },
+      {
+        "value": "DUPLICATE_PAYMENT",
+        "label": "Duplicate payment"
+      },
+      {
+        "value": "QUOTE_STALE",
+        "label": "Upgrade quote is stale"
+      },
+      {
+        "value": "UPGRADE_WOULD_SHORTEN_PERIOD",
+        "label": "Upgrade would shorten coverage period"
+      },
+      {
+        "value": "UPGRADE_MIN_CHARGE",
+        "label": "Upgrade charge below minimum"
+      },
+      {
+        "value": "UPGRADE_MIN_REMAINING",
+        "label": "Insufficient days remaining for this upgrade type"
+      },
+      {
+        "value": "UPGRADE_NOT_ELIGIBLE",
+        "label": "Not eligible for upgrade"
+      },
+      {
+        "value": "POSSIBLE_DUPLICATE_PROOF",
+        "label": "Possible duplicate proof image"
+      },
+      {
+        "value": "REJECTION_REASON_REQUIRED",
+        "label": "Rejection reason required"
+      },
+      {
+        "value": "OVER_REFUND",
+        "label": "Refund amount exceeds received amount"
+      },
+      {
+        "value": "LIMIT_EXCEEDED",
+        "label": "Limit exceeded"
+      },
+      {
+        "value": "ATTEMPT_EXPIRED",
+        "label": "Attempt has expired"
+      },
+      {
+        "value": "ALREADY_SUBMITTED",
+        "label": "Attempt already submitted"
+      },
+      {
+        "value": "STALE_VERSION",
+        "label": "Stale version — re-fetch and retry"
+      },
+      {
+        "value": "ATTEMPT_LIMIT_REACHED",
+        "label": "Attempt limit reached"
+      },
+      {
+        "value": "FILE_QUARANTINED",
+        "label": "File is quarantined"
+      },
+      {
+        "value": "FILE_PENDING_SCAN",
+        "label": "File scan pending"
+      },
+      {
+        "value": "FILE_TYPE_NOT_ALLOWED",
+        "label": "File type not allowed"
+      },
+      {
+        "value": "FILE_TOO_LARGE",
+        "label": "File too large"
+      },
+      {
+        "value": "PATH_TRAVERSAL",
+        "label": "Path traversal attempt detected"
+      },
+      {
+        "value": "NOT_FOUND",
+        "label": "Not found"
+      },
+      {
+        "value": "PERMISSION_DENIED",
+        "label": "Permission denied"
+      },
+      {
+        "value": "VALIDATION_ERROR",
+        "label": "Validation error"
+      },
+      {
+        "value": "CONFLICT",
+        "label": "Conflict"
+      },
+      {
+        "value": "INTERNAL_ERROR",
+        "label": "Internal server error"
+      },
+      {
+        "value": "EXTERNAL_SERVICE_ERROR",
+        "label": "External service error"
+      },
+      {
+        "value": "EXPORT_FORMAT_NOT_SUPPORTED",
+        "label": "Export format not supported"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "ExamStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "DRAFT",
+        "label": "Draft"
+      },
+      {
+        "value": "PUBLISHED",
+        "label": "Published"
+      },
+      {
+        "value": "CLOSED",
+        "label": "Closed"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "FileCategory": {
+    "module": "core",
+    "values": [
+      {
+        "value": "LESSON_VIDEO",
+        "label": "Lesson Video"
+      },
+      {
+        "value": "LESSON_DOCUMENT",
+        "label": "Lesson Document"
+      },
+      {
+        "value": "LESSON_ATTACHMENT",
+        "label": "Lesson Attachment"
+      },
+      {
+        "value": "ASSIGNMENT_SUBMISSION",
+        "label": "Assignment Submission"
+      },
+      {
+        "value": "PAYMENT_PROOF",
+        "label": "Payment Proof"
+      },
+      {
+        "value": "BRANDING_LOGO",
+        "label": "Branding Logo"
+      },
+      {
+        "value": "ANNOUNCEMENT_ATTACHMENT",
+        "label": "Announcement Attachment"
+      },
+      {
+        "value": "MESSAGE_ATTACHMENT",
+        "label": "Message Attachment"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "GradeLevel": {
+    "module": "core",
+    "values": [
+      {
+        "value": "PRIMARY_1",
+        "label": "Primary 1"
+      },
+      {
+        "value": "PRIMARY_2",
+        "label": "Primary 2"
+      },
+      {
+        "value": "PRIMARY_3",
+        "label": "Primary 3"
+      },
+      {
+        "value": "PRIMARY_4",
+        "label": "Primary 4"
+      },
+      {
+        "value": "PRIMARY_5",
+        "label": "Primary 5"
+      },
+      {
+        "value": "PRIMARY_6",
+        "label": "Primary 6"
+      },
+      {
+        "value": "PREP_1",
+        "label": "Prep 1 (إعدادي)"
+      },
+      {
+        "value": "PREP_2",
+        "label": "Prep 2"
+      },
+      {
+        "value": "PREP_3",
+        "label": "Prep 3"
+      },
+      {
+        "value": "SEC_1",
+        "label": "Secondary 1 (ثانوي)"
+      },
+      {
+        "value": "SEC_2",
+        "label": "Secondary 2"
+      },
+      {
+        "value": "SEC_3",
+        "label": "Secondary 3"
+      },
+      {
+        "value": "OTHER",
+        "label": "Other"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "GroupStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "ACTIVE",
+        "label": "Active"
+      },
+      {
+        "value": "FULL",
+        "label": "Full"
+      },
+      {
+        "value": "ARCHIVED",
+        "label": "Archived"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "LessonContentType": {
+    "module": "core",
+    "values": [
+      {
+        "value": "VIDEO",
+        "label": "Video"
+      },
+      {
+        "value": "PDF",
+        "label": "PDF"
+      },
+      {
+        "value": "TEXT",
+        "label": "Text"
+      },
+      {
+        "value": "EXTERNAL_LINK",
+        "label": "External Link"
+      },
+      {
+        "value": "FILE_SET",
+        "label": "File Set"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "LessonParentType": {
+    "module": "core",
+    "values": [
+      {
+        "value": "WEEK",
+        "label": "Week"
+      },
+      {
+        "value": "SECTION",
+        "label": "Section"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "LimitAction": {
+    "module": "core",
+    "values": [
+      {
+        "value": "WARN",
+        "label": "Warn"
+      },
+      {
+        "value": "BLOCK_NEW",
+        "label": "Block New"
+      },
+      {
+        "value": "FREEZE",
+        "label": "Freeze"
+      },
+      {
+        "value": "RESTRICT_FEATURE",
+        "label": "Restrict Feature"
+      },
+      {
+        "value": "ALLOW_GRACE",
+        "label": "Allow Grace"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "LimitKey": {
+    "module": "core",
+    "values": [
+      {
+        "value": "MAX_STUDENTS",
+        "label": "Max Students"
+      },
+      {
+        "value": "MAX_SUBJECTS_COURSES",
+        "label": "Max Subjects/Courses"
+      },
+      {
+        "value": "MAX_GROUPS",
+        "label": "Max Groups"
+      },
+      {
+        "value": "MAX_TEAM_MEMBERS",
+        "label": "Max Team Members"
+      },
+      {
+        "value": "STORAGE_GB",
+        "label": "Storage GB"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "NotificationCategory": {
+    "module": "core",
+    "values": [
+      {
+        "value": "NEW_ANNOUNCEMENT",
+        "label": "New Announcement"
+      },
+      {
+        "value": "EXAM_PUBLISHED",
+        "label": "Exam Published"
+      },
+      {
+        "value": "GRADE_POSTED",
+        "label": "Grade Posted"
+      },
+      {
+        "value": "ASSIGNMENT_DUE",
+        "label": "Assignment Due"
+      },
+      {
+        "value": "PAYMENT_DUE_OR_OVERDUE",
+        "label": "Payment Due or Overdue"
+      },
+      {
+        "value": "ENROLLMENT_CONFIRMED",
+        "label": "Enrollment Confirmed"
+      },
+      {
+        "value": "GROUP_CHANGED",
+        "label": "Group Changed"
+      },
+      {
+        "value": "SUBSCRIPTION_STATUS_CHANGED",
+        "label": "Subscription Status Changed"
+      },
+      {
+        "value": "SUPPORT_TICKET_UPDATE",
+        "label": "Support Ticket Update"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "PaymentMethod": {
+    "module": "core",
+    "values": [
+      {
+        "value": "VODAFONE_CASH",
+        "label": "Vodafone Cash"
+      },
+      {
+        "value": "INSTAPAY",
+        "label": "InstaPay"
+      },
+      {
+        "value": "FAWRY",
+        "label": "Fawry"
+      },
+      {
+        "value": "BANK_TRANSFER",
+        "label": "Bank Transfer"
+      },
+      {
+        "value": "CASH",
+        "label": "Cash"
+      },
+      {
+        "value": "OTHER",
+        "label": "Other"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "PaymentSource": {
+    "module": "core",
+    "values": [
+      {
+        "value": "STUDENT_SUBMITTED",
+        "label": "Student Submitted"
+      },
+      {
+        "value": "TEACHER_DIRECT",
+        "label": "Teacher Direct"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "PaymentStatusLink": {
+    "module": "core",
+    "values": [
+      {
+        "value": "NOT_REQUIRED",
+        "label": "Not Required"
+      },
+      {
+        "value": "PENDING",
+        "label": "Pending"
+      },
+      {
+        "value": "PAID",
+        "label": "Paid"
+      },
+      {
+        "value": "WAIVED",
+        "label": "Waived"
+      },
+      {
+        "value": "OVERDUE",
+        "label": "Overdue"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "PricingType": {
+    "module": "core",
+    "values": [
+      {
+        "value": "FREE",
+        "label": "Free"
+      },
+      {
+        "value": "ONE_TIME",
+        "label": "One-Time"
+      },
+      {
+        "value": "MONTHLY",
+        "label": "Monthly"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "QuestionType": {
+    "module": "core",
+    "values": [
+      {
+        "value": "MCQ",
+        "label": "MCQ"
+      },
+      {
+        "value": "TRUE_FALSE",
+        "label": "True/False"
+      },
+      {
+        "value": "SHORT_ANSWER",
+        "label": "Short Answer"
+      },
+      {
+        "value": "ESSAY",
+        "label": "Essay"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "RefundStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "REQUESTED",
+        "label": "Requested"
+      },
+      {
+        "value": "APPROVED",
+        "label": "Approved"
+      },
+      {
+        "value": "REJECTED",
+        "label": "Rejected"
+      },
+      {
+        "value": "COMPLETED",
+        "label": "Completed"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "Role": {
+    "module": "core",
+    "values": [
+      {
+        "value": "SUPER_ADMIN",
+        "label": "Super Admin"
+      },
+      {
+        "value": "TEACHER",
+        "label": "Teacher"
+      },
+      {
+        "value": "TEAM_MEMBER",
+        "label": "Team Member"
+      },
+      {
+        "value": "STUDENT",
+        "label": "Student"
+      },
+      {
+        "value": "PARENT",
+        "label": "Parent"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "ScanStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "PENDING",
+        "label": "Pending"
+      },
+      {
+        "value": "CLEAN",
+        "label": "Clean"
+      },
+      {
+        "value": "INFECTED",
+        "label": "Infected"
+      },
+      {
+        "value": "ERROR",
+        "label": "Error"
+      },
+      {
+        "value": "SKIPPED",
+        "label": "Skipped"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "StudentPaymentModel": {
+    "module": "core",
+    "values": [
+      {
+        "value": "WORKSPACE_MONTHLY",
+        "label": "Workspace Monthly"
+      },
+      {
+        "value": "COURSE_ONE_TIME",
+        "label": "Course One-Time"
+      },
+      {
+        "value": "COURSE_MONTHLY",
+        "label": "Course Monthly"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "StudentPaymentStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "PENDING",
+        "label": "Pending"
+      },
+      {
+        "value": "PAID",
+        "label": "Paid"
+      },
+      {
+        "value": "PARTIALLY_PAID",
+        "label": "Partially Paid"
+      },
+      {
+        "value": "OVERDUE",
+        "label": "Overdue"
+      },
+      {
+        "value": "REJECTED",
+        "label": "Rejected"
+      },
+      {
+        "value": "DISPUTED",
+        "label": "Disputed"
+      },
+      {
+        "value": "REFUNDED",
+        "label": "Refunded"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "SubPaymentKind": {
+    "module": "core",
+    "values": [
+      {
+        "value": "NEW_SUBSCRIPTION",
+        "label": "New Subscription"
+      },
+      {
+        "value": "RENEWAL",
+        "label": "Renewal"
+      },
+      {
+        "value": "UPGRADE",
+        "label": "Upgrade"
+      },
+      {
+        "value": "ADDON",
+        "label": "Add-on"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "SubPaymentStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "SUBMITTED",
+        "label": "Submitted"
+      },
+      {
+        "value": "UNDER_REVIEW",
+        "label": "Under Review"
+      },
+      {
+        "value": "APPROVED",
+        "label": "Approved"
+      },
+      {
+        "value": "REJECTED",
+        "label": "Rejected"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "SubscriptionStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "SCHEDULED",
+        "label": "Scheduled"
+      },
+      {
+        "value": "ACTIVE",
+        "label": "Active"
+      },
+      {
+        "value": "EXPIRED",
+        "label": "Expired"
+      },
+      {
+        "value": "CANCELLED",
+        "label": "Cancelled"
+      },
+      {
+        "value": "SUPERSEDED",
+        "label": "Superseded"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "TicketCategory": {
+    "module": "core",
+    "values": [
+      {
+        "value": "BILLING",
+        "label": "Billing"
+      },
+      {
+        "value": "TECHNICAL",
+        "label": "Technical"
+      },
+      {
+        "value": "ACCOUNT",
+        "label": "Account"
+      },
+      {
+        "value": "CONTENT",
+        "label": "Content"
+      },
+      {
+        "value": "OTHER",
+        "label": "Other"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "TicketStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "OPEN",
+        "label": "Open"
+      },
+      {
+        "value": "IN_PROGRESS",
+        "label": "In Progress"
+      },
+      {
+        "value": "RESOLVED",
+        "label": "Resolved"
+      },
+      {
+        "value": "CLOSED",
+        "label": "Closed"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "Visibility": {
+    "module": "core",
+    "values": [
+      {
+        "value": "DRAFT",
+        "label": "Draft"
+      },
+      {
+        "value": "PUBLISHED",
+        "label": "Published"
+      },
+      {
+        "value": "ARCHIVED",
+        "label": "Archived"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "WorkspaceStatus": {
+    "module": "core",
+    "values": [
+      {
+        "value": "SETUP",
+        "label": "Setup"
+      },
+      {
+        "value": "PENDING_PAYMENT",
+        "label": "Pending Payment"
+      },
+      {
+        "value": "PENDING_APPROVAL",
+        "label": "Pending Approval"
+      },
+      {
+        "value": "ACTIVE",
+        "label": "Active"
+      },
+      {
+        "value": "GRACE_PERIOD",
+        "label": "Grace Period"
+      },
+      {
+        "value": "FROZEN",
+        "label": "Frozen"
+      },
+      {
+        "value": "DEACTIVATED",
+        "label": "Deactivated"
+      },
+      {
+        "value": "DELETED",
+        "label": "Deleted"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  },
+  "PermissionKey": {
+    "module": "accounts",
+    "values": [
+      {
+        "value": "STUDENT_VIEW",
+        "label": "View Students"
+      },
+      {
+        "value": "STUDENT_CREATE",
+        "label": "Create Students"
+      },
+      {
+        "value": "STUDENT_EDIT",
+        "label": "Edit Students"
+      },
+      {
+        "value": "STUDENT_DEACTIVATE",
+        "label": "Deactivate Students"
+      },
+      {
+        "value": "CONTENT_VIEW",
+        "label": "View Content"
+      },
+      {
+        "value": "CONTENT_CREATE",
+        "label": "Create Content"
+      },
+      {
+        "value": "CONTENT_EDIT",
+        "label": "Edit Content"
+      },
+      {
+        "value": "CONTENT_ARCHIVE",
+        "label": "Archive Content"
+      },
+      {
+        "value": "GROUP_VIEW",
+        "label": "View Groups"
+      },
+      {
+        "value": "GROUP_CREATE",
+        "label": "Create Groups"
+      },
+      {
+        "value": "GROUP_EDIT",
+        "label": "Edit Groups"
+      },
+      {
+        "value": "GROUP_ASSIGN",
+        "label": "Assign Students to Groups"
+      },
+      {
+        "value": "ASSESSMENT_CREATE",
+        "label": "Create Assessments"
+      },
+      {
+        "value": "ASSESSMENT_EDIT",
+        "label": "Edit Assessments"
+      },
+      {
+        "value": "ASSESSMENT_GRADE",
+        "label": "Grade Assessments"
+      },
+      {
+        "value": "PAYMENT_VIEW",
+        "label": "View Payments"
+      },
+      {
+        "value": "PAYMENT_CONFIRM",
+        "label": "Confirm Payments"
+      },
+      {
+        "value": "PAYMENT_REJECT",
+        "label": "Reject Payments"
+      },
+      {
+        "value": "ATTENDANCE_RECORD",
+        "label": "Record Attendance"
+      },
+      {
+        "value": "ATTENDANCE_VIEW_REPORTS",
+        "label": "View Attendance Reports"
+      },
+      {
+        "value": "REPORTS_VIEW",
+        "label": "View Reports"
+      },
+      {
+        "value": "COMM_ANNOUNCEMENTS",
+        "label": "Send Announcements"
+      },
+      {
+        "value": "COMM_DMS",
+        "label": "Send Direct Messages"
+      }
+    ],
+    "note": "API sends value (string), not label, unless a serializer explicitly maps to label."
+  }
+}

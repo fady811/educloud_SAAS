@@ -1,0 +1,15 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from MeWorkspacesView inline dict.",
+  "_endpoint": "GET /api/v1/me/workspaces/",
+  "_status": 200,
+  "_shape": "list (not paginated)",
+  "data": [
+    {
+      "workspace_id": 42,
+      "subdomain": "myschool",
+      "role": "TEACHER",
+      "is_owner": true,
+      "status": "ACTIVE"
+    }
+  ]
+}

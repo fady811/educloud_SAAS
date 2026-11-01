@@ -1,0 +1,15 @@
+{
+  "_note": "COULD NOT EXERCISE: PostgreSQL not available. Shape derived from AttendanceReportView inline response.",
+  "_endpoint": "GET /api/v1/reports/attendance/",
+  "_status": 200,
+  "_shape": "NOT paginated — inline aggregation result",
+  "by_student": [
+    {"student_id": 2, "status": "PRESENT", "count": 8},
+    {"student_id": 2, "status": "ABSENT", "count": 2},
+    {"student_id": 3, "status": "PRESENT", "count": 10}
+  ],
+  "totals": {
+    "PRESENT": 18,
+    "ABSENT": 2
+  }
+}
