@@ -105,10 +105,7 @@ class SubscriptionPaymentViewSet(ListModelMixin, RetrieveModelMixin, GenericView
             payment.status = SubPaymentStatus.APPROVED
             payment.reviewed_at = timezone.now()
             payment.reviewed_by_id = request.user.id
-            notes = request.data.get("notes", "")
-            if notes:
-                payment.notes = notes
-            payment.save(update_fields=["status", "reviewed_at", "reviewed_by_id", "notes", "updated_at"])
+            payment.save(update_fields=["status", "reviewed_at", "reviewed_by_id", "updated_at"])
 
             audit.record(
                 actor_id=request.user.id,
@@ -151,8 +148,8 @@ class SubscriptionPaymentViewSet(ListModelMixin, RetrieveModelMixin, GenericView
             payment.status = SubPaymentStatus.REJECTED
             payment.reviewed_at = timezone.now()
             payment.reviewed_by_id = request.user.id
-            payment.notes = reason
-            payment.save(update_fields=["status", "reviewed_at", "reviewed_by_id", "notes", "updated_at"])
+            payment.rejection_reason = reason
+            payment.save(update_fields=["status", "reviewed_at", "reviewed_by_id", "rejection_reason", "updated_at"])
 
             audit.record(
                 actor_id=request.user.id,

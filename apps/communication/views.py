@@ -9,14 +9,22 @@ from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, CreateMode
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
-from apps.core.permissions import IsWorkspaceMember
+from apps.core.permissions import WorkspacePermission, ALL_MEMBERS, NON_PARENT
+from apps.accounts.enums import PermissionKey
 from apps.communication.models import Announcement, Conversation, Message
 from apps.communication.serializers import AnnouncementSerializer, ConversationSerializer, MessageSerializer
 
 
 class AnnouncementViewSet(ModelViewSet):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
     serializer_class = AnnouncementSerializer
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "POST": {"required_permission_key": PermissionKey.COMM_ANNOUNCEMENTS},
+        "PUT": {"required_permission_key": PermissionKey.COMM_ANNOUNCEMENTS},
+        "PATCH": {"required_permission_key": PermissionKey.COMM_ANNOUNCEMENTS},
+        "DELETE": {"required_permission_key": PermissionKey.COMM_ANNOUNCEMENTS},
+    }
 
     def get_queryset(self):
         return Announcement.objects.filter(
@@ -32,8 +40,13 @@ class AnnouncementViewSet(ModelViewSet):
 
 
 class ConversationViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin, GenericViewSet):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
     serializer_class = ConversationSerializer
+    # REQ-PARENT-05: PARENT may not initiate DMs
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "POST": {"allowed_roles": NON_PARENT},
+    }
 
     def get_queryset(self):
         u = self.request.user.id
@@ -43,10 +56,26 @@ class ConversationViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin, 
 
     def create(self, request, *args, **kwargs):
         from apps.communication.services.messaging import get_or_create_conversation
+        from apps.core.errors import PermissionDeniedError
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.accounts.services.permissions import has_permission
+
         other_user_id = request.data.get("other_user_id")
         if not other_user_id:
             from apps.core.errors import ValidationFailed
             raise ValidationFailed("other_user_id is required.")
+
+        # TEAM_MEMBER needs COMM_DMS key; TEACHER (owner) bypasses; STUDENT allowed freely
+        try:
+            m = WorkspaceMembership.objects.get(user=request.user, workspace_id=request.workspace_id)
+        except WorkspaceMembership.DoesNotExist:
+            raise PermissionDeniedError("Not a workspace member.")
+
+        if m.role == Role.TEAM_MEMBER and not m.is_owner:
+            if not has_permission(request.user, request.workspace_id, PermissionKey.COMM_DMS):
+                raise PermissionDeniedError("You do not have permission to send direct messages.")
+
         conv = get_or_create_conversation(
             workspace_id=request.workspace_id,
             initiator_id=request.user.id,
@@ -62,8 +91,14 @@ class ConversationViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin, 
 
 
 class MessageViewSet(ListModelMixin, CreateModelMixin, GenericViewSet):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
     serializer_class = MessageSerializer
+    # REQ-PARENT-05: PARENT may not send messages
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "POST": {"allowed_roles": NON_PARENT},
+        "DELETE": {"allowed_roles": ALL_MEMBERS},
+    }
 
     def get_queryset(self):
         from apps.communication.services.messaging import assert_participant
@@ -85,10 +120,26 @@ class MessageViewSet(ListModelMixin, CreateModelMixin, GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         from apps.communication.services.messaging import send_message
+        from apps.core.errors import PermissionDeniedError
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.accounts.services.permissions import has_permission
+
         conv_id = kwargs.get("conversation_pk") or request.data.get("conversation")
         if not conv_id:
             from apps.core.errors import ValidationFailed
             raise ValidationFailed("conversation is required.")
+
+        # TEAM_MEMBER needs COMM_DMS key
+        try:
+            m = WorkspaceMembership.objects.get(user=request.user, workspace_id=request.workspace_id)
+        except WorkspaceMembership.DoesNotExist:
+            raise PermissionDeniedError("Not a workspace member.")
+
+        if m.role == Role.TEAM_MEMBER and not m.is_owner:
+            if not has_permission(request.user, request.workspace_id, PermissionKey.COMM_DMS):
+                raise PermissionDeniedError("You do not have permission to send direct messages.")
+
         msg = send_message(
             workspace_id=request.workspace_id,
             conversation_id=int(conv_id),

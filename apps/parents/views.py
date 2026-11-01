@@ -6,33 +6,30 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsWorkspaceMember
+from apps.core.permissions import WorkspacePermission, STAFF_ONLY, PARENT_ONLY
+from apps.accounts.enums import PermissionKey
 from apps.parents.serializers import ParentStudentLinkSerializer
 
 
 class ParentLinkView(APIView):
     """
     Create/remove a parent↔student link.
-    Only a workspace owner/teacher (permission STUDENT_MANAGE) may create links.
-    A parent cannot link themselves to an arbitrary student_id they don't already own.
+    Only staff with STUDENT_EDIT permission may create links.
     """
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "POST": {"required_permission_key": PermissionKey.STUDENT_EDIT},
+        "DELETE": {"required_permission_key": PermissionKey.STUDENT_EDIT},
+    }
 
     def post(self, request: Request) -> Response:
         from apps.parents.models import ParentStudentLink
-        from apps.accounts.services.permissions import has_permission
-        from apps.accounts.enums import PermissionKey
-        from apps.core.errors import Conflict, PermissionDeniedError
-
-        # Only staff (owner/teacher with explicit grant) may create parent links
-        if not has_permission(request.user, request.workspace_id, PermissionKey.STUDENT_EDIT):
-            raise PermissionDeniedError("You do not have permission to manage parent links.")
+        from apps.core.errors import Conflict, ValidationFailed
 
         parent_id = request.data.get("parent_id")
         student_id = request.data.get("student_id")
 
         if not parent_id or not student_id:
-            from apps.core.errors import ValidationFailed
             raise ValidationFailed("parent_id and student_id are required.")
 
         link, created = ParentStudentLink.objects.get_or_create(
@@ -47,13 +44,8 @@ class ParentLinkView(APIView):
 
     def delete(self, request: Request) -> Response:
         from apps.parents.models import ParentStudentLink
-        from apps.accounts.services.permissions import has_permission
-        from apps.accounts.enums import PermissionKey
-        from apps.core.errors import NotFound, PermissionDeniedError
+        from apps.core.errors import NotFound
         from django.utils import timezone
-
-        if not has_permission(request.user, request.workspace_id, PermissionKey.STUDENT_EDIT):
-            raise PermissionDeniedError("You do not have permission to manage parent links.")
 
         parent_id = request.data.get("parent_id")
         student_id = request.data.get("student_id")
@@ -73,9 +65,12 @@ class ParentLinkView(APIView):
 class ParentStudentsView(APIView):
     """
     Get students linked to the authenticated parent user.
-    A parent can ONLY see their own children — enforced by filtering on request.user.id.
+    A parent can ONLY see their own children.
     """
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"allowed_roles": PARENT_ONLY},
+    }
 
     def get(self, request: Request) -> Response:
         from apps.parents.models import ParentStudentLink

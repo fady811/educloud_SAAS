@@ -18,10 +18,9 @@ class TenantResolverMiddleware:
     Sets the tenant context so TenantManager filters automatically.
 
     Resolution order (§15.2a):
-      1. X-Workspace-ID header (for internal/admin requests — only on platform host)
-      2. Subdomain: <slug>.BASE_DOMAIN
-      3. Custom domain: exact match in custom_domains table
-      4. No workspace (platform host) — Super Admin API paths are served here
+      1. Subdomain: <slug>.BASE_DOMAIN
+      2. Custom domain: exact match in custom_domains table
+      3. No workspace (platform host) — Super Admin API paths are served here
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:

@@ -6,14 +6,21 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsWorkspaceMember, IsWorkspaceOwner
+from apps.core.permissions import WorkspacePermission, ALL_MEMBERS
+from apps.accounts.enums import PermissionKey
 from apps.content.serializers import (
     CourseSerializer, CourseWriteSerializer, LessonSerializer, SubjectSerializer,
 )
 
+_STUDENT_PARENT = frozenset(["STUDENT", "PARENT"])
+
 
 class SubjectListCreateView(APIView):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "POST": {"required_permission_key": PermissionKey.CONTENT_CREATE},
+    }
 
     def get(self, request: Request) -> Response:
         from apps.content.models import Subject
@@ -22,11 +29,6 @@ class SubjectListCreateView(APIView):
 
     def post(self, request: Request) -> Response:
         from apps.content.models import Subject
-        from apps.accounts.services.permissions import has_permission
-        from apps.accounts.enums import PermissionKey
-        from apps.core.errors import PermissionDeniedError
-        if not has_permission(request.user, request.workspace_id, PermissionKey.CONTENT_CREATE):
-            raise PermissionDeniedError("You do not have permission to create content.")
 
         subject = Subject.objects.create(
             workspace_id=request.workspace_id,
@@ -38,11 +40,28 @@ class SubjectListCreateView(APIView):
 
 
 class CourseListCreateView(APIView):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "POST": {"required_permission_key": PermissionKey.CONTENT_CREATE},
+    }
+
+    def _is_student_or_parent(self, request: Request) -> bool:
+        from apps.workspaces.models import WorkspaceMembership
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=request.user, workspace_id=request.workspace_id
+            )
+            return m.role in _STUDENT_PARENT
+        except Exception:  # noqa: BLE001
+            return False
 
     def get(self, request: Request) -> Response:
         from apps.content.models import Course
+        from apps.core.enums import Visibility
         qs = Course.objects.filter(workspace_id=request.workspace_id, archived_at__isnull=True)
+        if self._is_student_or_parent(request):
+            qs = qs.filter(visibility=Visibility.PUBLISHED)
         return Response(CourseSerializer(qs, many=True).data)
 
     def post(self, request: Request) -> Response:
@@ -67,7 +86,12 @@ class CourseListCreateView(APIView):
 
 
 class CourseDetailView(APIView):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "PATCH": {"required_permission_key": PermissionKey.CONTENT_EDIT},
+        "DELETE": {"owner_only": True},
+    }
 
     def get(self, request: Request, pk: int) -> Response:
         from apps.content.models import Course
@@ -114,10 +138,37 @@ class CourseDetailView(APIView):
 
 
 class LessonListCreateView(APIView):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "POST": {"required_permission_key": PermissionKey.CONTENT_CREATE},
+    }
+
+    def _is_student_or_parent(self, request: Request) -> bool:
+        from apps.workspaces.models import WorkspaceMembership
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=request.user, workspace_id=request.workspace_id
+            )
+            return m.role in _STUDENT_PARENT
+        except Exception:  # noqa: BLE001
+            return False
 
     def get(self, request: Request, course_id: int) -> Response:
-        from apps.content.models import Lesson
+        from apps.content.models import Lesson, Course
+        from apps.core.enums import Visibility
+        # Students/parents may only list lessons of PUBLISHED courses
+        if self._is_student_or_parent(request):
+            try:
+                course = Course.objects.get(
+                    id=course_id,
+                    workspace_id=request.workspace_id,
+                    visibility=Visibility.PUBLISHED,
+                )
+            except Course.DoesNotExist:
+                from apps.core.errors import NotFound
+                raise NotFound("Course not found")
+            _ = course  # confirm access
         qs = Lesson.objects.filter(
             workspace_id=request.workspace_id,
             parent_type="COURSE",

@@ -51,4 +51,4 @@ class WorkspaceMembershipSerializer(serializers.Serializer):
     workspace_id = serializers.IntegerField()
     role = serializers.CharField()
     is_owner = serializers.BooleanField()
-    joined_at = serializers.DateTimeField()
+    joined_at = serializers.DateTimeField(source="created_at", read_only=True)

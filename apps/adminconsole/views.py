@@ -56,14 +56,14 @@ class UserListView(APIView):
 
     def get(self, request: Request) -> Response:
         from apps.accounts.models import User
-        qs = User.objects.filter(deleted_at__isnull=True).order_by("-date_joined")[:100]
+        qs = User.objects.filter(deleted_at__isnull=True).order_by("-created_at")[:100]
         data = [
             {
                 "id": u.id,
                 "email": u.email,
                 "phone": u.phone,
-                "full_name": u.full_name,
-                "date_joined": u.date_joined.isoformat(),
+                "display_name": u.display_name,
+                "created_at": u.created_at.isoformat(),
             }
             for u in qs
         ]

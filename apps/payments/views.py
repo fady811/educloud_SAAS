@@ -9,7 +9,8 @@ from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, CreateMode
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from apps.core.permissions import IsWorkspaceMember
+from apps.core.permissions import WorkspacePermission, ALL_MEMBERS
+from apps.accounts.enums import PermissionKey
 from apps.payments.models import StudentPayment, WorkspacePaymentMethod, PaymentEvent
 from apps.payments.serializers import StudentPaymentSerializer, WorkspacePaymentMethodSerializer
 
@@ -26,13 +27,63 @@ def _record_payment_event(payment: StudentPayment, from_status: str, actor_id: i
 
 
 class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin, GenericViewSet):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
     serializer_class = StudentPaymentSerializer
+    # GET: staff need PAYMENT_VIEW; students can see their own (filtered in get_queryset if needed)
+    # POST: students create for themselves; owner/staff with PAYMENT_VIEW may create for any student
+    # approve/reject actions are POST — permission checked inline
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.PAYMENT_VIEW},
+        "POST": {"allowed_roles": ALL_MEMBERS},
+        "DELETE": {"owner_only": True},
+    }
 
     def get_queryset(self):
-        return StudentPayment.objects.filter(workspace_id=self.request.workspace_id)
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        qs = StudentPayment.objects.filter(workspace_id=self.request.workspace_id)
+        # Students see only their own payments
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=self.request.user, workspace_id=self.request.workspace_id
+            )
+            if m.role == Role.STUDENT:
+                qs = qs.filter(student_id=self.request.user.id)
+        except WorkspaceMembership.DoesNotExist:
+            pass
+        return qs
 
     def perform_create(self, serializer):
+        from apps.core.errors import PermissionDeniedError
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.accounts.services.permissions import has_permission
+
+        # Determine caller's role
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=self.request.user, workspace_id=self.request.workspace_id
+            )
+        except WorkspaceMembership.DoesNotExist:
+            raise PermissionDeniedError("Not a workspace member.")
+
+        if m.role == Role.STUDENT:
+            # Students may only create payments for themselves
+            student_id = serializer.validated_data.get(
+                "student_id",
+                getattr(serializer.validated_data.get("student"), "id", None),
+            )
+            if student_id is None:
+                student_id = self.request.user.id
+            if student_id != self.request.user.id:
+                raise PermissionDeniedError("Students may only create payments for themselves.")
+        else:
+            # Staff need PAYMENT_VIEW to create a payment
+            if not m.is_owner and not has_permission(
+                self.request.user, self.request.workspace_id, PermissionKey.PAYMENT_VIEW
+            ):
+                raise PermissionDeniedError("You do not have permission to create student payments.")
+
         serializer.save(workspace_id=self.request.workspace_id)
 
     @action(detail=True, methods=["post"], url_path="submit-proof")
@@ -68,12 +119,16 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
     def approve(self, request, pk=None):
         """Teacher/admin approves a student payment. PENDING → PAID."""
         from apps.core.enums import StudentPaymentStatus
-        from apps.core.errors import ValidationFailed
+        from apps.core.errors import ValidationFailed, PermissionDeniedError
         from apps.accounts.services.permissions import has_permission
-        from apps.accounts.enums import PermissionKey
+        from apps.workspaces.models import WorkspaceMembership
 
-        if not has_permission(request.user, request.workspace_id, PermissionKey.PAYMENT_CONFIRM):
-            from apps.core.errors import PermissionDeniedError
+        try:
+            m = WorkspaceMembership.objects.get(user=request.user, workspace_id=request.workspace_id)
+        except WorkspaceMembership.DoesNotExist:
+            raise PermissionDeniedError("Not a workspace member.")
+
+        if not m.is_owner and not has_permission(request.user, request.workspace_id, PermissionKey.PAYMENT_CONFIRM):
             raise PermissionDeniedError("You do not have permission to approve payments.")
 
         with transaction.atomic():
@@ -100,16 +155,20 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
     def reject(self, request, pk=None):
         """Teacher/admin rejects a student payment. PENDING → REJECTED."""
         from apps.core.enums import StudentPaymentStatus
-        from apps.core.errors import ValidationFailed
+        from apps.core.errors import ValidationFailed, PermissionDeniedError
         from apps.accounts.services.permissions import has_permission
-        from apps.accounts.enums import PermissionKey
+        from apps.workspaces.models import WorkspaceMembership
 
         reason = request.data.get("reason", "")
         if not reason:
             raise ValidationFailed("reason is required when rejecting a payment.")
 
-        if not has_permission(request.user, request.workspace_id, PermissionKey.PAYMENT_REJECT):
-            from apps.core.errors import PermissionDeniedError
+        try:
+            m = WorkspaceMembership.objects.get(user=request.user, workspace_id=request.workspace_id)
+        except WorkspaceMembership.DoesNotExist:
+            raise PermissionDeniedError("Not a workspace member.")
+
+        if not m.is_owner and not has_permission(request.user, request.workspace_id, PermissionKey.PAYMENT_REJECT):
             raise PermissionDeniedError("You do not have permission to reject payments.")
 
         with transaction.atomic():
@@ -132,8 +191,16 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
 
 
 class WorkspacePaymentMethodViewSet(ModelViewSet):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
     serializer_class = WorkspacePaymentMethodSerializer
+    # Billing configuration is owner-only (REQ-BILLING-04)
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "POST": {"owner_only": True},
+        "PUT": {"owner_only": True},
+        "PATCH": {"owner_only": True},
+        "DELETE": {"owner_only": True},
+    }
 
     def get_queryset(self):
         return WorkspacePaymentMethod.objects.filter(workspace_id=self.request.workspace_id)

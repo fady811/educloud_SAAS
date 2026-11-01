@@ -27,7 +27,7 @@ class CourseSerializer(serializers.Serializer):
 class CourseWriteSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=255)
     description = serializers.CharField(required=False, default="")
-    visibility = serializers.CharField(required=False, default="PRIVATE")
+    visibility = serializers.ChoiceField(choices=["DRAFT", "PUBLISHED", "ARCHIVED"], required=False, default="DRAFT")
     pricing_type = serializers.CharField(required=False, default="FREE")
     price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     subject_id = serializers.IntegerField(required=False, allow_null=True)
