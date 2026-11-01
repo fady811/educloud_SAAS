@@ -25,6 +25,9 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # Disable default throttling in tests (LoginThrottleTests exercises throttle directly)
 REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []  # noqa: F405
 
+# Raise the IP-based LoginThrottle limit so matrix tests can log in many times without blocking
+LOGIN_THROTTLE_MAX_ATTEMPTS = 10000
+
 # Allow any host in tests (test client uses 'testserver' by default)
 ALLOWED_HOSTS = ["*"]
 
