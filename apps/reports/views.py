@@ -5,7 +5,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsWorkspaceMember
+from apps.core.permissions import WorkspacePermission
+from apps.accounts.enums import PermissionKey
 
 
 class AttendanceReportView(APIView):
@@ -13,7 +14,10 @@ class AttendanceReportView(APIView):
     Attendance breakdown per student and per status.
     Optional filters: group_id, student_id, date_from, date_to.
     """
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.ATTENDANCE_VIEW_REPORTS},
+    }
 
     def get(self, request: Request) -> Response:
         from apps.groups.models import AttendanceRecord
@@ -35,12 +39,9 @@ class AttendanceReportView(APIView):
         if date_to:
             qs = qs.filter(session__scheduled_at__date__lte=date_to)
 
-        # Per-student breakdown: {student_id, PRESENT, ABSENT, LATE, EXCUSED}
         by_student = list(
             qs.values("student_id", "status").annotate(count=Count("id")).order_by("student_id", "status")
         )
-
-        # Totals across the filtered set
         totals = {
             row["status"]: row["total"]
             for row in qs.values("status").annotate(total=Count("id"))
@@ -54,7 +55,10 @@ class PaymentReportView(APIView):
     Payment summary by status with totals.
     Optional filters: student_id, payment_model, date_from, date_to.
     """
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.REPORTS_VIEW},
+    }
 
     def get(self, request: Request) -> Response:
         from apps.payments.models import StudentPayment
@@ -76,15 +80,12 @@ class PaymentReportView(APIView):
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
 
-        # Breakdown by status
         by_status = list(
             qs.values("status").annotate(
                 count=Count("id"),
                 total_egp=Sum("amount_egp"),
             ).order_by("status")
         )
-
-        # Grand total of PAID payments only
         paid_total = qs.filter(status="PAID").aggregate(total=Sum("amount_egp"))["total"] or 0
 
         return Response({
@@ -98,7 +99,10 @@ class EnrollmentReportView(APIView):
     Enrollment counts by type and status.
     Optional filters: enrollable_type (GROUP | COURSE), status.
     """
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.REPORTS_VIEW},
+    }
 
     def get(self, request: Request) -> Response:
         from apps.enrollment.models import Enrollment
@@ -117,7 +121,6 @@ class EnrollmentReportView(APIView):
         by_type_status = list(
             qs.values("enrollable_type", "status").annotate(count=Count("id")).order_by("enrollable_type", "status")
         )
-
         total = qs.aggregate(total=Count("id"))["total"] or 0
 
         return Response({"by_type_status": by_type_status, "total": total})

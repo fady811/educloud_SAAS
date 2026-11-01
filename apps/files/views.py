@@ -9,13 +9,16 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsWorkspaceMember
+from apps.core.permissions import WorkspacePermission, ALL_MEMBERS
 from apps.files.serializers import StoredFileSerializer, UploadRequestSerializer
 
 
 class UploadRequestView(APIView):
     """Request a presigned upload URL."""
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "POST": {"allowed_roles": ALL_MEMBERS},
+    }
 
     def post(self, request: Request) -> Response:
         from apps.files.services.upload import request_upload
@@ -32,7 +35,11 @@ class UploadRequestView(APIView):
 
 
 class FileDetailView(APIView):
-    permission_classes = [IsWorkspaceMember]
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+        "DELETE": {"allowed_roles": ALL_MEMBERS},
+    }
 
     def get(self, request: Request, pk: int) -> Response:
         from apps.files.models import StoredFile
@@ -45,12 +52,21 @@ class FileDetailView(APIView):
 
     def delete(self, request: Request, pk: int) -> Response:
         from apps.files.models import StoredFile
-        from apps.core.errors import NotFound
+        from apps.core.errors import NotFound, PermissionDeniedError
         from django.utils import timezone
         try:
             f = StoredFile.objects.get(id=pk, workspace_id=request.workspace_id, deleted_at__isnull=True)
         except StoredFile.DoesNotExist:
             raise NotFound("File not found")
+        # Only the uploader or workspace owner may delete a file
+        if f.uploaded_by_id != request.user.id:
+            from apps.workspaces.models import WorkspaceMembership
+            try:
+                m = WorkspaceMembership.objects.get(user=request.user, workspace_id=request.workspace_id)
+                if not m.is_owner:
+                    raise PermissionDeniedError("You may only delete your own files.")
+            except WorkspaceMembership.DoesNotExist:
+                raise PermissionDeniedError("Not a workspace member.")
         f.deleted_at = timezone.now()
         f.save(update_fields=["deleted_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
