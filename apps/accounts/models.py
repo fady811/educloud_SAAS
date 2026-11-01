@@ -223,6 +223,22 @@ class StudentImportJob(TimeStampedModel):
         db_table = "student_import_jobs"
 
 
+class LoginAttempt(models.Model):
+    """DB-backed login attempt record — throttle fallback when Redis is unavailable (DR-024)."""
+
+    identifier_hash = models.CharField(max_length=64)  # SHA-256, never raw email/phone
+    ip_address = models.CharField(max_length=45)
+    attempted_at = models.DateTimeField()
+
+    class Meta:
+        app_label = "accounts"
+        db_table = "login_attempts"
+        indexes = [
+            models.Index(fields=["identifier_hash", "attempted_at"], name="la_ident_at_idx"),
+            models.Index(fields=["ip_address", "attempted_at"], name="la_ip_at_idx"),
+        ]
+
+
 class StudentImportRow(TimeStampedModel):
     """Per-row result of a CSV import (REQ-CONTENT-08a)."""
 
