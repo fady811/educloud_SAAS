@@ -9,7 +9,7 @@ from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, CreateMode
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from apps.core.permissions import WorkspacePermission, ALL_MEMBERS
+from apps.core.permissions import WorkspacePermission, ALL_MEMBERS, STUDENT_ONLY, PARENT_ONLY
 from apps.accounts.enums import PermissionKey
 from apps.payments.models import StudentPayment, WorkspacePaymentMethod, PaymentEvent
 from apps.payments.serializers import StudentPaymentSerializer, WorkspacePaymentMethodSerializer
@@ -32,8 +32,13 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
     # GET: staff need PAYMENT_VIEW; students can see their own (filtered in get_queryset if needed)
     # POST: students create for themselves; owner/staff with PAYMENT_VIEW may create for any student
     # approve/reject actions are POST — permission checked inline
+    # STUDENT/PARENT bypass required_permission_key; their queryset is narrowed below.
+    # TEACHER/TEAM_MEMBER need PAYMENT_VIEW to list all payments.
     permission_map = {
-        "GET": {"required_permission_key": PermissionKey.PAYMENT_VIEW},
+        "GET": {
+            "required_permission_key": PermissionKey.PAYMENT_VIEW,
+            "allow_roles_without_key": frozenset(["STUDENT", "PARENT"]),
+        },
         "POST": {"allowed_roles": ALL_MEMBERS},
         "DELETE": {"owner_only": True},
     }
@@ -41,16 +46,23 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
     def get_queryset(self):
         from apps.core.enums import Role
         from apps.workspaces.models import WorkspaceMembership
+        from apps.parents.models import ParentStudentLink
         qs = StudentPayment.objects.filter(workspace_id=self.request.workspace_id)
-        # Students see only their own payments
         try:
             m = WorkspaceMembership.objects.get(
                 user=self.request.user, workspace_id=self.request.workspace_id
             )
-            if m.role == Role.STUDENT:
-                qs = qs.filter(student_id=self.request.user.id)
         except WorkspaceMembership.DoesNotExist:
-            pass
+            return qs.none()
+        if m.role == Role.STUDENT:
+            return qs.filter(student_id=self.request.user.id)
+        if m.role == Role.PARENT:
+            child_ids = ParentStudentLink.objects.filter(
+                workspace_id=self.request.workspace_id,
+                parent_id=self.request.user.id,
+                unlinked_at__isnull=True,
+            ).values_list("student_id", flat=True)
+            return qs.filter(student_id__in=child_ids)
         return qs
 
     def perform_create(self, serializer):
