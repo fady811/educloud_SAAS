@@ -4,6 +4,19 @@ All workspace endpoints are protected by `WorkspacePermission` (inherits from `I
 Super-admins bypass all role/permission-key checks.  
 Workspace owners (`is_owner=True`) bypass `required_permission_key` checks.
 
+### `allow_roles_without_key`
+
+A rule may include `allow_roles_without_key: frozenset[str]` to let specific roles (e.g. STUDENT, PARENT) access the endpoint without holding the `required_permission_key`. Roles NOT in this set still require the key. Used when students/parents need read access to their own data.
+
+Example:
+```python
+"GET": {
+    "required_permission_key": PermissionKey.PAYMENT_VIEW,
+    "allow_roles_without_key": frozenset(["STUDENT", "PARENT"]),
+}
+```
+TEACHER/TEAM_MEMBER still need `PAYMENT_VIEW`; STUDENT/PARENT pass (narrowed by queryset).
+
 ## Role Constants
 
 | Constant | Members |
@@ -54,9 +67,9 @@ Defined in `apps.accounts.enums.PermissionKey`:
 | `/assessments/questions/{id}/` | ALL_MEMBERS | — | ASSESSMENT_EDIT | owner_only |
 | `/assessments/assignments/` | ALL_MEMBERS | ASSESSMENT_CREATE | — | — |
 | `/assessments/assignments/{id}/` | ALL_MEMBERS | — | ASSESSMENT_EDIT | owner_only |
-| `/assessments/attempts/` | ALL_MEMBERS | STUDENT_ONLY | — | — |
-| `/assessments/attempts/{id}/submit` | — | STUDENT_ONLY (own only) | — | — |
-| `/assessments/submissions/` | ALL_MEMBERS | STUDENT_ONLY | — | — |
+| `/exam-attempts/` | ALL_MEMBERS (STUDENT/PARENT: own only, queryset narrowed) | STUDENT_ONLY | — | — |
+| `/exam-attempts/{id}/submit` | — | STUDENT_ONLY (own only) | — | — |
+| `/assignment-submissions/` | ALL_MEMBERS (STUDENT/PARENT: own only, queryset narrowed) | STUDENT_ONLY | — | — |
 
 ### Enrollment (`apps.enrollment`)
 
@@ -79,7 +92,7 @@ Enrollment POST also verifies: target must be a STUDENT member; MAX_STUDENTS lim
 
 | Endpoint | GET | POST | PUT/PATCH | DELETE |
 |----------|-----|------|-----------|--------|
-| `/payments/student-payments/` | PAYMENT_VIEW (STUDENT sees own only) | ALL_MEMBERS (STUDENT=self only) | — | owner_only |
+| `/student-payments/` | PAYMENT_VIEW (STUDENT/PARENT bypass key; queryset narrowed to own/children) | ALL_MEMBERS (STUDENT=self only) | — | owner_only |
 | `/payments/student-payments/{id}/submit-proof` | — | owner (own payment only) | — | — |
 | `/payments/student-payments/{id}/approve` | — | PAYMENT_CONFIRM | — | — |
 | `/payments/student-payments/{id}/reject` | — | PAYMENT_REJECT | — | — |

@@ -146,3 +146,58 @@ A DB-backed counter is preferable but requires a migration. See `OPEN_QUESTIONS.
 
 **HTTP contract impact:** POST `/auth/login/` — a Redis outage previously caused unhandled exceptions
 or failed open; now correctly throttles using the in-process fallback.
+
+---
+
+## Part 2 — Round 2: Read Holes, Regression Fix, DB Throttle, Full Test Matrix
+
+### 2.1 — Fixed grade data leak: ExamAttempt and AssignmentSubmission querysets narrowed by role
+
+**Files:** `apps/assessments/views.py`
+
+`ExamAttemptViewSet.get_queryset()` and `AssignmentSubmissionViewSet.get_queryset()` previously returned all workspace records to every role, including STUDENT, allowing any student to read every other student's grades.
+
+**Fix:**
+- STUDENT: filtered to `student_id=request.user.id`
+- PARENT: filtered to children via active `ParentStudentLink` rows
+- TEACHER/TEAM_MEMBER/OWNER: unchanged (all records)
+
+`retrieve` returns 404 (not 403) for unauthorized objects because the queryset is narrowed before DRF's object lookup.
+
+### 2.2 — Fixed payment regression: STUDENT and PARENT now pass the GET permission gate
+
+**Files:** `apps/payments/views.py`, `apps/core/permissions.py`
+
+`StudentPaymentViewSet.permission_map["GET"]` had `required_permission_key: PAYMENT_VIEW` which blocked STUDENT entirely, making the student-narrowing code in `get_queryset` dead code.
+
+**Fix:** Added `allow_roles_without_key: frozenset(["STUDENT", "PARENT"])` to the GET rule. STUDENT/PARENT bypass the key check; TEACHER/TEAM_MEMBER still need `PAYMENT_VIEW`.
+
+`WorkspacePermission` was updated with a new `allow_roles_without_key` rule key. Also added PARENT narrowing to the payment queryset (own children's payments only).
+
+### 2.3 — Replaced in-process throttle fallback with DB-backed LoginAttempt model
+
+**Files:** `apps/accounts/models.py`, `apps/accounts/migrations/0003_loginattempt.py`, `apps/accounts/services/login_throttle.py`
+
+The in-process dict fallback was not shared across Gunicorn workers (effective limit 5×N per worker) and reset on restart.
+
+**Fix:**
+- Added `LoginAttempt` model with `identifier_hash` (SHA-256 of email/phone, never raw), `ip_address`, `attempted_at`, and compound indexes on `(identifier_hash, attempted_at)` and `(ip_address, attempted_at)`.
+- `record_failure` now writes a `LoginAttempt` row when the cache raises instead of incrementing an in-process dict.
+- `check_login_allowed` and `is_locked` query the DB when the cache raises.
+- Opportunistic `_db_cleanup()` deletes rows older than the 900-second window after each DB-path failure record.
+- Redis remains the fast path; DB is fallback only.
+
+### 2.4 — Full table-driven permission matrix tests (36 tests, all passing)
+
+**Files:** `tests/test_permission_matrix.py`, `config/settings/test.py`
+
+Rewrote the test file with 7 test classes covering:
+- Structural: all WorkspacePermission views declare permission_map (4.1)
+- Full matrix: 7 actors × major endpoints (4.2)
+- Contract regression: bugs 2.1–2.3 (4.3)
+- Throttle fail-closed via DB: 2 tests proving DB path blocks on 6th attempt and writes hashed rows (4.4)
+- Enrollment authorization: self-enroll, cross-enroll denied, owner enroll (4.5)
+- Grade isolation: STUDENT list/retrieve for attempts and submissions — own only, 404 on others (4.6)
+- Payment isolation: STUDENT list sees only own, TEAM_MEMBER without key denied (4.7)
+
+Test run: **36 tests, 0 failures, 0 errors.**
