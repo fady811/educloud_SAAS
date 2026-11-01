@@ -53,7 +53,26 @@ class ExamAttemptViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
     }
 
     def get_queryset(self):
-        return ExamAttempt.objects.filter(workspace_id=self.request.workspace_id)
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.parents.models import ParentStudentLink
+        qs = ExamAttempt.objects.filter(workspace_id=self.request.workspace_id)
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=self.request.user, workspace_id=self.request.workspace_id
+            )
+        except WorkspaceMembership.DoesNotExist:
+            return qs.none()
+        if m.role == Role.STUDENT:
+            return qs.filter(student_id=self.request.user.id)
+        if m.role == Role.PARENT:
+            child_ids = ParentStudentLink.objects.filter(
+                workspace_id=self.request.workspace_id,
+                parent_id=self.request.user.id,
+                unlinked_at__isnull=True,
+            ).values_list("student_id", flat=True)
+            return qs.filter(student_id__in=child_ids)
+        return qs
 
     @action(detail=False, methods=["post"])
     def start(self, request):
@@ -108,4 +127,23 @@ class AssignmentSubmissionViewSet(ListModelMixin, RetrieveModelMixin, CreateMode
     }
 
     def get_queryset(self):
-        return AssignmentSubmission.objects.filter(workspace_id=self.request.workspace_id)
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.parents.models import ParentStudentLink
+        qs = AssignmentSubmission.objects.filter(workspace_id=self.request.workspace_id)
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=self.request.user, workspace_id=self.request.workspace_id
+            )
+        except WorkspaceMembership.DoesNotExist:
+            return qs.none()
+        if m.role == Role.STUDENT:
+            return qs.filter(student_id=self.request.user.id)
+        if m.role == Role.PARENT:
+            child_ids = ParentStudentLink.objects.filter(
+                workspace_id=self.request.workspace_id,
+                parent_id=self.request.user.id,
+                unlinked_at__isnull=True,
+            ).values_list("student_id", flat=True)
+            return qs.filter(student_id__in=child_ids)
+        return qs
