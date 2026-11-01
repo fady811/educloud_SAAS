@@ -1,9 +1,23 @@
 """DRF permission classes (§15.3)."""
 from __future__ import annotations
 
+import logging
+
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.views import APIView
+
+_log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Role-set constants for use in permission_map declarations
+# ---------------------------------------------------------------------------
+
+ALL_MEMBERS = frozenset(["TEACHER", "TEAM_MEMBER", "STUDENT", "PARENT"])
+STAFF_ONLY = frozenset(["TEACHER", "TEAM_MEMBER"])
+STUDENT_ONLY = frozenset(["STUDENT"])
+PARENT_ONLY = frozenset(["PARENT"])
+NON_PARENT = frozenset(["TEACHER", "TEAM_MEMBER", "STUDENT"])
 
 
 class IsWorkspaceMember(IsAuthenticated):
@@ -53,6 +67,83 @@ class HasPermissionKey(IsWorkspaceMember):
             return False
         workspace_id = getattr(request, "workspace_id", None)
         return _check_permission_key(request.user, workspace_id, key)
+
+
+class WorkspacePermission(IsWorkspaceMember):
+    """
+    Declarative role/key permission gate (REQ-ROLE-02, §15.3).
+
+    Every view using this class MUST declare ``permission_map``:
+
+        permission_map = {
+            "GET":    {"allowed_roles": ALL_MEMBERS},
+            "POST":   {"required_permission_key": PermissionKey.CONTENT_CREATE},
+            "PATCH":  {"required_permission_key": PermissionKey.CONTENT_EDIT},
+            "DELETE": {"owner_only": True},
+        }
+
+    Rule dict keys:
+      allowed_roles         frozenset[str]  — roles permitted (Role enum values).
+      required_permission_key str           — PermissionKey; OWNER bypasses implicitly.
+      owner_only            bool            — only the workspace owner (is_owner=True).
+
+    If a method is absent from the map the request is denied.
+    If the view declares no permission_map at all, every method is denied and an
+    error is logged — views must be explicit.
+
+    SUPER_ADMIN bypasses all workspace checks.
+    Workspace OWNER (is_owner=True) bypasses required_permission_key.
+    """
+
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        if not super().has_permission(request, view):
+            return False
+
+        user = request.user
+        workspace_id = getattr(request, "workspace_id", None)
+
+        # SUPER_ADMIN bypasses all workspace checks
+        if getattr(user, "is_super_admin", False):
+            return True
+
+        # Views must declare an explicit permission_map — fail closed with log
+        permission_map = getattr(view, "permission_map", None)
+        if permission_map is None:
+            _log.error(
+                "WorkspacePermission: view %s declares no permission_map — denying request",
+                view.__class__.__name__,
+            )
+            return False
+
+        method = request.method.upper()
+        rule = permission_map.get(method)
+        if rule is None:
+            return False
+
+        # Resolve membership (already confirmed present by IsWorkspaceMember)
+        try:
+            from apps.workspaces.models import WorkspaceMembership
+            membership = WorkspaceMembership.objects.get(user=user, workspace_id=workspace_id)
+        except Exception:  # noqa: BLE001
+            return False
+
+        # owner_only — workspace owner only
+        if rule.get("owner_only"):
+            return bool(membership.is_owner)
+
+        # allowed_roles check
+        allowed_roles = rule.get("allowed_roles")
+        if allowed_roles is not None and membership.role not in allowed_roles:
+            return False
+
+        # required_permission_key — owner bypasses; others need explicit grant
+        required_key = rule.get("required_permission_key")
+        if required_key:
+            if membership.is_owner:
+                return True
+            return _check_permission_key(user, workspace_id, required_key)
+
+        return True
 
 
 class GracePeriodGate(BasePermission):
