@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.accounts.models import User, UserSession, TeamMemberPermission
+from apps.accounts.models import User, UserSession, TeamMemberPermission, StudentImportJob
 from apps.accounts.enums import PermissionKey
 from apps.core.validators import validate_phone, normalize_phone
 
@@ -65,3 +65,20 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
     password = serializers.CharField(min_length=8)
+
+
+class WorkspaceMembershipStudentSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(source="user.id")
+    email = serializers.EmailField(source="user.email", allow_null=True)
+    phone = serializers.CharField(source="user.phone", allow_null=True)
+    first_name = serializers.CharField(source="user.first_name")
+    last_name = serializers.CharField(source="user.last_name")
+    is_active = serializers.BooleanField()
+    joined_at = serializers.DateTimeField(source="created_at")
+
+
+class StudentImportJobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentImportJob
+        fields = ["id", "status", "total_rows", "created_count", "skipped_count", "created_at", "updated_at"]
+        read_only_fields = fields

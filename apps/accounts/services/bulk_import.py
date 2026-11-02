@@ -96,6 +96,17 @@ def _import_row(
             if email and User.objects.filter(email__iexact=email).exists():
                 return {"status": "SKIPPED", "error_code": "DUPLICATE_EMAIL", "error_detail": "Email already registered.", "created_user": None}
 
+            # Check per-row seat limit (counts created so far in this import + existing)
+            from apps.billing.services.entitlements import check_limit
+            from apps.core.enums import LimitKey
+            current_count = WorkspaceMembership.objects.filter(
+                workspace_id=workspace_id, role=Role.STUDENT
+            ).count()
+            try:
+                check_limit(workspace_id, LimitKey.MAX_STUDENTS, current_count)
+            except LimitExceeded:
+                return {"status": "SKIPPED", "error_code": "LIMIT_EXCEEDED", "error_detail": "Workspace student limit reached.", "created_user": None}
+
             parts = name.split(" ", 1)
             user = User(
                 phone=phone,
