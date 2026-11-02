@@ -132,3 +132,42 @@ Enrollment POST also verifies: target must be a STUDENT member; MAX_STUDENTS lim
 
 Billing endpoints use `IsWorkspaceOwner` (not `WorkspacePermission`).
 Super-admin actions (`approve`, `reject`) use `IsSuperAdmin`.
+
+## Round 3 additions
+
+### Students (`apps.accounts` — student sub-routes)
+
+| Endpoint | GET | POST | PATCH | DELETE |
+|----------|-----|------|-------|--------|
+| `/students/` | STUDENT_VIEW | STUDENT_CREATE | — | — |
+| `/students/{id}/` | STUDENT_VIEW | — | STUDENT_EDIT | STUDENT_DEACTIVATE |
+| `/students/import/` | — | STUDENT_CREATE | — | — |
+| `/students/import/{id}/` | STUDENT_VIEW | — | — | — |
+
+### Auth — verification & password reset (`apps.accounts`)
+
+All endpoints below use `AllowAny` (unauthenticated by design):
+
+| Endpoint | POST |
+|----------|------|
+| `/auth/verify/` | Verify email/phone token (sets `email_verified_at` or `phone_verified_at`) |
+| `/auth/verify/resend/` | Re-issue a verification token |
+| `/auth/password-reset/` | Request password reset link |
+| `/auth/password-reset/confirm/` | Apply new password; revokes all active sessions |
+
+### Lesson content (`apps.content`)
+
+| Endpoint | GET |
+|----------|-----|
+| `/lessons/{id}/content/` | ALL_MEMBERS — STUDENT/PARENT additionally checked via `lesson_accessible()` |
+
+STUDENT and PARENT callers are subject to the 7-step access check:
+1. Lesson exists and is not archived
+2. Parent course is PUBLISHED and not archived
+3. Free-preview lesson → allowed without enrollment
+4. Active enrollment in the course exists
+5. Enrollment is not expired/cancelled
+6. `StudentCourseAccess` row exists, is not revoked, and has not expired
+7. Workspace status is ACTIVE or GRACE_PERIOD
+
+PARENT callers use their first linked child's `student_id` for the check.

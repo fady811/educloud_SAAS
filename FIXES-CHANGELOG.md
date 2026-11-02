@@ -201,3 +201,65 @@ Rewrote the test file with 7 test classes covering:
 - Payment isolation: STUDENT list sees only own, TEAM_MEMBER without key denied (4.7)
 
 Test run: **36 tests, 0 failures, 0 errors.**
+
+## Round 3
+
+### 3.1 — Added COURSE to LessonParentType enum + CHECK constraint
+
+**Files:** `apps/core/enums.py`, `apps/content/migrations/0002_lesson_parent_type_check.py`
+
+`LessonParentType` was missing the `COURSE` value, so lessons whose parent is a Course could not be created. Additionally, there was no database-level constraint preventing invalid `parent_type` values.
+
+**Fix:**
+- Added `COURSE = "COURSE", "Course"` to `LessonParentType` in `apps/core/enums.py`.
+- Migration `0002` AlterField to include all three choices, then AddConstraint with a `CheckConstraint(condition=Q(parent_type__in=["COURSE","WEEK","SECTION"]))` named `lesson_parent_type_valid`.
+- Used `condition=` (Django 6.1 rename from `check=`).
+
+---
+
+### 3.2 — Narrowed enrollment GET queryset by caller role
+
+**Files:** `apps/enrollment/views.py`
+
+`EnrollmentListCreateView.get` and `EnrollmentDetailView._get` returned all workspace enrollments to every member, enabling IDOR.
+
+**Fix:**
+- STUDENT callers see only their own enrollments (`student_id=request.user.id`).
+- PARENT callers see only their linked children's enrollments (via `ParentStudentLink`, `unlinked_at__isnull=True`).
+- Staff/owner callers see all enrollments.
+- `EnrollmentDetailView._get` raises 404 (not 403) for rows outside the caller's scope.
+
+---
+
+### 3.3 — Fixed IsParentOfStudent field names
+
+**Files:** `apps/core/permissions.py`
+
+`IsParentOfStudent.has_object_permission()` used wrong field names (`parent_user`, `student_user_id`) that don't exist on `ParentStudentLink`, and omitted the `unlinked_at__isnull=True` filter, allowing unlinked parents to pass the check.
+
+**Fix:**
+- `parent_user=request.user` → `parent_id=request.user.id`
+- `student_user_id=student_id` → `student_id=student_id`
+- Added `unlinked_at__isnull=True`
+
+---
+
+### 3.4 — Enrollment POST delegates to enroll() service; fixed MAX_STUDENTS count
+
+**Files:** `apps/enrollment/views.py`, `apps/enrollment/services/eligibility.py`
+
+`EnrollmentListCreateView.post` was calling `Enrollment.objects.create()` directly, bypassing duplicate-enrollment detection and seat-limit checks in `enroll()`. The seat-limit check also counted `WorkspaceMembership` rows instead of active enrollments.
+
+**Fix:**
+- `post()` now imports and calls `apps.enrollment.services.eligibility.enroll()`.
+- `enroll()` counts `Enrollment.objects.filter(workspace_id=…, status="ACTIVE")` for the seat limit (not membership rows).
+
+---
+
+### 3.5 — WorkspacePermission: is_owner bypasses allowed_roles check
+
+**Files:** `apps/core/permissions.py`
+
+Workspace owners whose membership record stores `role="OWNER"` (a non-standard value) were denied by the `allowed_roles` check at every endpoint, since `"OWNER"` is not in `ALL_MEMBERS`.
+
+**Fix:** Added `if not membership.is_owner: return False` inside the `allowed_roles` branch so owners bypass the role-string check, consistent with the existing bypass for `required_permission_key`.
