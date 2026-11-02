@@ -188,3 +188,89 @@ class LessonListCreateView(APIView):
             is_free_preview=request.data.get("is_free_preview", False),
         )
         return Response(LessonSerializer(lesson).data, status=status.HTTP_201_CREATED)
+
+
+class LessonContentView(APIView):
+    """
+    GET /api/v1/lessons/{id}/content/ — return signed URLs for lesson content items.
+
+    Access gate (REQ-ENR-CONTENT-01):
+      - Staff may always access content in their workspace.
+      - Students and parents are checked via lesson_accessible().
+    File gate: files with scan_status INFECTED are blocked; PENDING blocks with 202.
+    """
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"allowed_roles": ALL_MEMBERS},
+    }
+
+    def get(self, request: Request, pk: int) -> Response:
+        from apps.content.models import Lesson, LessonContent
+        from apps.core.errors import NotFound, PermissionDeniedError
+        from apps.core.enums import ScanStatus
+        from apps.workspaces.models import WorkspaceMembership
+
+        try:
+            lesson = Lesson.objects.get(id=pk, workspace_id=request.workspace_id, archived_at__isnull=True)
+        except Lesson.DoesNotExist:
+            raise NotFound("Lesson not found.")
+
+        # Access check for students/parents
+        try:
+            m = WorkspaceMembership.objects.get(user=request.user, workspace_id=request.workspace_id)
+        except WorkspaceMembership.DoesNotExist:
+            raise PermissionDeniedError("Not a workspace member.")
+
+        if m.role in ("STUDENT", "PARENT"):
+            from apps.enrollment.services.access import lesson_accessible
+            student_id = request.user.id
+            if m.role == "PARENT":
+                from apps.parents.models import ParentStudentLink
+                child = ParentStudentLink.objects.filter(
+                    workspace_id=request.workspace_id,
+                    parent_id=request.user.id,
+                    unlinked_at__isnull=True,
+                ).values_list("student_id", flat=True).first()
+                if child is None:
+                    raise PermissionDeniedError("No linked student found.")
+                student_id = child
+            if not lesson_accessible(
+                workspace_id=request.workspace_id,
+                student_id=student_id,
+                lesson_id=pk,
+            ):
+                raise PermissionDeniedError("You do not have access to this lesson.")
+
+        contents = LessonContent.objects.filter(
+            lesson=lesson, workspace_id=request.workspace_id
+        ).order_by("order")
+
+        result = []
+        for item in contents:
+            entry = {
+                "id": item.id,
+                "content_type": item.content_type,
+                "order": item.order,
+                "body": item.body,
+                "duration_seconds": item.duration_seconds,
+                "url": None,
+                "scan_status": None,
+            }
+            if item.file_id:
+                from apps.files.models import StoredFile
+                from apps.core.errors import ValidationFailed as VF
+                try:
+                    f = StoredFile.objects.get(id=item.file_id, workspace_id=request.workspace_id)
+                    entry["scan_status"] = f.scan_status
+                    if f.scan_status == ScanStatus.INFECTED:
+                        entry["url"] = None
+                    elif f.scan_status == ScanStatus.PENDING:
+                        entry["url"] = None
+                    else:
+                        from apps.files.services.storage import get_presigned_url
+                        entry["url"] = get_presigned_url(f.key)
+                except StoredFile.DoesNotExist:
+                    pass
+            result.append(entry)
+
+        return Response({"lesson_id": pk, "contents": result})
