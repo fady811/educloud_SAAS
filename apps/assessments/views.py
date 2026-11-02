@@ -10,7 +10,7 @@ from apps.assessments.serializers import (
     ExamSerializer, QuestionSerializer, ExamAttemptSerializer,
     AssignmentSerializer, AssignmentSubmissionSerializer,
 )
-from apps.assessments.services.attempts import start_attempt, submit_attempt
+from apps.assessments.services.attempts import start_attempt, submit_attempt, autosave_answers
 
 
 class ExamViewSet(ModelViewSet):
@@ -50,6 +50,8 @@ class ExamAttemptViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
         "GET": {"allowed_roles": ALL_MEMBERS},
         # start and submit are POST — students only
         "POST": {"allowed_roles": STUDENT_ONLY},
+        # save_answers PATCH action — students only
+        "PATCH": {"allowed_roles": STUDENT_ONLY},
     }
 
     def get_queryset(self):
@@ -85,19 +87,41 @@ class ExamAttemptViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
 
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
-        from apps.core.errors import PermissionDeniedError
-        # Only the owner of the attempt may submit it
+        from apps.core.errors import PermissionDeniedError, NotFound
         try:
             attempt_obj = ExamAttempt.objects.get(id=int(pk), workspace_id=request.workspace_id)
         except ExamAttempt.DoesNotExist:
-            from apps.core.errors import NotFound
             raise NotFound("Attempt not found")
         if attempt_obj.student_id != request.user.id:
             raise PermissionDeniedError("You may only submit your own attempt.")
         attempt = submit_attempt(
             attempt_id=int(pk),
             student_id=request.user.id,
-            answers=request.data.get("answers", {}),
+            answers=request.data.get("answers") or None,
+        )
+        return Response(ExamAttemptSerializer(attempt).data)
+
+    @action(detail=True, methods=["patch"], url_path="answers")
+    def save_answers(self, request, pk=None):
+        """Autosave endpoint — STUDENT_ONLY, optimistic compare-and-set."""
+        from apps.core.errors import NotFound, PermissionDeniedError, ValidationFailed
+        try:
+            attempt_obj = ExamAttempt.objects.get(id=int(pk), workspace_id=request.workspace_id)
+        except ExamAttempt.DoesNotExist:
+            raise NotFound("Attempt not found")
+        if attempt_obj.student_id != request.user.id:
+            raise PermissionDeniedError("You may only save answers for your own attempt.")
+        answers = request.data.get("answers")
+        if answers is None:
+            raise ValidationFailed("answers is required.")
+        version = request.data.get("version")
+        if version is None:
+            raise ValidationFailed("version is required.")
+        attempt = autosave_answers(
+            attempt_id=int(pk),
+            student_id=request.user.id,
+            answers=answers,
+            version=int(version),
         )
         return Response(ExamAttemptSerializer(attempt).data)
 

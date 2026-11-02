@@ -71,6 +71,7 @@ class ExamAttempt(TenantModel):
     submitted_at = models.DateTimeField(null=True, blank=True)
     deadline_at = models.DateTimeField(db_index=True)
     answers = models.JSONField(default=dict)
+    version = models.IntegerField(default=0)
     score = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
     graded_at = models.DateTimeField(null=True, blank=True)
     graded_by_id = models.BigIntegerField(null=True, blank=True)

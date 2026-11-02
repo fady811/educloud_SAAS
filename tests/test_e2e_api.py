@@ -73,7 +73,7 @@ class E2EBase(TestCase):
             status="SETUP",
             settings_json={"display_name": subdomain},
         )
-        WorkspaceMembership.objects.create(user=owner, workspace=ws, role="OWNER", is_owner=True)
+        WorkspaceMembership.objects.create(user=owner, workspace=ws, role="TEACHER", is_owner=True)
         return ws
 
     def _activate_workspace(self, ws):

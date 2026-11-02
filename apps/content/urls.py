@@ -3,6 +3,7 @@ from apps.content import views
 
 urlpatterns = [
     path("subjects/", views.SubjectListCreateView.as_view(), name="subject-list"),
+    path("subjects/<int:pk>/", views.SubjectDetailView.as_view(), name="subject-detail"),
     path("courses/", views.CourseListCreateView.as_view(), name="course-list"),
     path("courses/<int:pk>/", views.CourseDetailView.as_view(), name="course-detail"),
     path("courses/<int:course_id>/lessons/", views.LessonListCreateView.as_view(), name="lesson-list"),

@@ -1,19 +1,23 @@
-"""Billing views — packages, subscriptions, subscription payments."""
+"""Billing views — packages, subscriptions, subscription payments, upgrades, addons."""
 from __future__ import annotations
+
+from decimal import Decimal, InvalidOperation
 
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
 
-from apps.billing.models import Package, Subscription, SubscriptionPayment
+from apps.billing.models import CapacityAddon, Package, Subscription, SubscriptionPayment
 from apps.billing.serializers import (
+    CapacityAddonSerializer,
     PackageSerializer,
-    SubscriptionSerializer,
     SubscriptionPaymentSerializer,
+    SubscriptionSerializer,
 )
-from apps.billing.services.subscriptions import create_subscription
+from apps.billing.services.subscriptions import create_subscription, get_upgrade_quote, prorate_upgrade, purchase_addon
 from apps.core.permissions import IsWorkspaceOwner, IsSuperAdmin
 
 
@@ -163,3 +167,111 @@ class SubscriptionPaymentViewSet(ListModelMixin, RetrieveModelMixin, GenericView
             )
 
         return Response(SubscriptionPaymentSerializer(payment).data)
+
+
+class UpgradeOptionsView(APIView):
+    """GET /billing/upgrade-options/ — list packages the current subscription can upgrade to."""
+    permission_classes = [IsWorkspaceOwner]
+
+    def get(self, request):
+        from apps.core.enums import SubscriptionStatus
+
+        active_sub = Subscription.objects.filter(
+            workspace_id=request.workspace_id,
+            status=SubscriptionStatus.ACTIVE,
+        ).select_related("package").first()
+
+        if not active_sub:
+            return Response({"detail": "No active subscription found."}, status=status.HTTP_404_NOT_FOUND)
+
+        packages = Package.objects.filter(
+            is_active=True,
+            price_egp__gt=active_sub.package.price_egp,
+        ).order_by("price_egp")
+
+        return Response({
+            "current_subscription_id": active_sub.id,
+            "current_package": PackageSerializer(active_sub.package).data,
+            "upgradeable_packages": PackageSerializer(packages, many=True).data,
+        })
+
+
+class UpgradeQuoteView(APIView):
+    """POST /billing/upgrade-quote/ — compute proration quote without committing."""
+    permission_classes = [IsWorkspaceOwner]
+
+    def post(self, request):
+        from apps.core.errors import ValidationFailed
+
+        subscription_id = request.data.get("subscription_id")
+        package_id = request.data.get("package_id")
+        if not subscription_id or not package_id:
+            raise ValidationFailed("subscription_id and package_id are required.")
+
+        quote = get_upgrade_quote(int(subscription_id), int(package_id))
+        return Response(quote)
+
+
+class UpgradeView(APIView):
+    """POST /billing/upgrades/ — execute the upgrade."""
+    permission_classes = [IsWorkspaceOwner]
+
+    def post(self, request):
+        from apps.core.errors import ValidationFailed
+
+        subscription_id = request.data.get("subscription_id")
+        package_id = request.data.get("package_id")
+        quoted_amount_raw = request.data.get("quoted_amount_egp")
+        if not subscription_id or not package_id:
+            raise ValidationFailed("subscription_id and package_id are required.")
+
+        quoted_amount = None
+        if quoted_amount_raw is not None:
+            try:
+                quoted_amount = Decimal(str(quoted_amount_raw))
+            except InvalidOperation:
+                raise ValidationFailed("quoted_amount_egp must be a valid decimal.")
+
+        new_sub = prorate_upgrade(
+            int(subscription_id),
+            int(package_id),
+            actor_id=request.user.id,
+            quoted_amount=quoted_amount,
+        )
+        return Response(SubscriptionSerializer(new_sub).data, status=status.HTTP_201_CREATED)
+
+
+class AddonViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
+    """GET /billing/addons/ — list capacity add-ons; POST — purchase one."""
+    permission_classes = [IsWorkspaceOwner]
+    serializer_class = CapacityAddonSerializer
+
+    def get_queryset(self):
+        return CapacityAddon.objects.filter(workspace_id=self.request.workspace_id).order_by("-created_at")
+
+    def create(self, request):
+        from apps.core.errors import ValidationFailed
+
+        addon_type = request.data.get("addon_type")
+        quantity = request.data.get("quantity")
+        price_egp = request.data.get("price_egp")
+        proof_file_id = request.data.get("proof_file_id")
+
+        if not addon_type or not quantity or not price_egp:
+            raise ValidationFailed("addon_type, quantity, and price_egp are required.")
+
+        try:
+            qty = int(quantity)
+            price = Decimal(str(price_egp))
+        except (ValueError, InvalidOperation):
+            raise ValidationFailed("quantity must be an integer and price_egp a decimal.")
+
+        addon = purchase_addon(
+            workspace_id=request.workspace_id,
+            addon_type=addon_type,
+            quantity=qty,
+            price_egp=price,
+            proof_file_id=int(proof_file_id) if proof_file_id else None,
+            actor_id=request.user.id,
+        )
+        return Response(CapacityAddonSerializer(addon).data, status=status.HTTP_201_CREATED)

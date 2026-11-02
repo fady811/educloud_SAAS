@@ -135,11 +135,10 @@ class WorkspacePermission(IsWorkspaceMember):
         if rule.get("owner_only"):
             return bool(membership.is_owner)
 
-        # allowed_roles check — workspace owner (is_owner=True) bypasses role restriction
+        # allowed_roles check — role must be in the set (is_owner does NOT bypass this)
         allowed_roles = rule.get("allowed_roles")
         if allowed_roles is not None and membership.role not in allowed_roles:
-            if not membership.is_owner:
-                return False
+            return False
 
         # required_permission_key — owner bypasses; allow_roles_without_key bypasses for listed roles
         required_key = rule.get("required_permission_key")

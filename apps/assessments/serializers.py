@@ -15,7 +15,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 class ExamAttemptSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamAttempt
-        fields = ["id", "exam", "student", "status", "started_at", "submitted_at", "deadline_at", "score"]
+        fields = ["id", "exam", "student", "status", "started_at", "submitted_at", "deadline_at", "answers", "version", "score"]
 
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:

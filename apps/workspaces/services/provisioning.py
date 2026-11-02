@@ -19,10 +19,11 @@ def create_workspace(*, owner_id: int, subdomain: str, display_name: str = ""):
             status=WorkspaceStatus.SETUP,
             settings_json={"display_name": display_name or subdomain},
         )
+        from apps.core.enums import Role
         WorkspaceMembership.objects.create(
             user_id=owner_id,
             workspace=ws,
-            role="OWNER",
+            role=Role.TEACHER,
             is_owner=True,
         )
         audit.record(

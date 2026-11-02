@@ -9,6 +9,7 @@ class SubjectSerializer(serializers.Serializer):
     name = serializers.CharField()
     grade_level = serializers.CharField()
     color = serializers.CharField()
+    visibility = serializers.CharField()
     archived_at = serializers.DateTimeField(allow_null=True)
 
 

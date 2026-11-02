@@ -13,12 +13,19 @@ class Subject(TenantModel):
     name = models.CharField(max_length=150)
     grade_level = models.CharField(max_length=20, choices=GradeLevel.choices, blank=True)
     color = models.CharField(max_length=7, blank=True)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.DRAFT)
     archived_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         app_label = "content"
         db_table = "subjects"
         unique_together = [("workspace", "name")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(visibility__in=["DRAFT", "PUBLISHED", "ARCHIVED"]),
+                name="subject_visibility_valid",
+            ),
+        ]
 
 
 class Course(TenantModel):

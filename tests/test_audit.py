@@ -184,7 +184,7 @@ class PermissionsTests(TestCase):
         from apps.workspaces.models import WorkspaceMembership
         u = make_user(email="owner_perms@test.com")
         ws = make_workspace("perm-ws-owner")
-        WorkspaceMembership.objects.create(user=u, workspace=ws, role="OWNER", is_owner=True)
+        WorkspaceMembership.objects.create(user=u, workspace=ws, role="TEACHER", is_owner=True)
         for key in [PermissionKey.STUDENT_VIEW, PermissionKey.CONTENT_CREATE, PermissionKey.REPORTS_VIEW]:
             self.assertTrue(has_permission(u, ws.id, key))
 

@@ -123,6 +123,12 @@ class WorkspaceMembership(TimeStampedModel):
                 condition=models.Q(is_owner=True),
                 name="workspace_single_owner",
             ),
+            models.CheckConstraint(
+                condition=models.Q(role__in=[
+                    "SUPER_ADMIN", "TEACHER", "TEAM_MEMBER", "STUDENT", "PARENT"
+                ]),
+                name="wm_role_valid",
+            ),
         ]
 
     def __str__(self) -> str:
