@@ -135,10 +135,11 @@ class WorkspacePermission(IsWorkspaceMember):
         if rule.get("owner_only"):
             return bool(membership.is_owner)
 
-        # allowed_roles check
+        # allowed_roles check — workspace owner (is_owner=True) bypasses role restriction
         allowed_roles = rule.get("allowed_roles")
         if allowed_roles is not None and membership.role not in allowed_roles:
-            return False
+            if not membership.is_owner:
+                return False
 
         # required_permission_key — owner bypasses; allow_roles_without_key bypasses for listed roles
         required_key = rule.get("required_permission_key")
@@ -181,8 +182,9 @@ class IsParentOfStudent(IsAuthenticated):
             return False
         return ParentStudentLink.objects.filter(
             workspace_id=workspace_id,
-            parent_user=request.user,
-            student_user_id=student_id,
+            parent_id=request.user.id,
+            student_id=student_id,
+            unlinked_at__isnull=True,
         ).exists()
 
 
