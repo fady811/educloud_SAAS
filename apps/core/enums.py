@@ -82,6 +82,7 @@ class PaymentStatusLink(models.TextChoices):
 
 
 class LessonParentType(models.TextChoices):
+    COURSE = "COURSE", "Course"
     WEEK = "WEEK", "Week"
     SECTION = "SECTION", "Section"
 
