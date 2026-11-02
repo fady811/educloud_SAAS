@@ -7,12 +7,63 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin, CreateModelMixin
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from apps.core.permissions import WorkspacePermission, ALL_MEMBERS
+from apps.core.permissions import WorkspacePermission, ALL_MEMBERS, STUDENT_ONLY, PARENT_ONLY
 from apps.accounts.enums import PermissionKey
 from apps.payments.models import StudentPayment, WorkspacePaymentMethod, PaymentEvent
 from apps.payments.serializers import StudentPaymentSerializer, WorkspacePaymentMethodSerializer
+
+
+def _grant_access_on_approval(payment: StudentPayment, actor_id: int) -> None:
+    """
+    Grant or extend StudentCourseAccess when a student payment is approved.
+    Handles COURSE_ONE_TIME, COURSE_MONTHLY, and WORKSPACE_MONTHLY payment models.
+    """
+    from apps.core.enums import StudentPaymentModel
+    from apps.enrollment.services.access import grant_access
+    from apps.content.models import Course
+
+    if payment.enrollable_type != "COURSE" or not payment.enrollable_id:
+        return
+
+    try:
+        course = Course.objects.get(id=payment.enrollable_id, workspace_id=payment.workspace_id)
+    except Course.DoesNotExist:
+        return
+
+    paid_until = None  # default: no expiry (one-time)
+    if payment.payment_model == StudentPaymentModel.COURSE_MONTHLY:
+        # Use the period_end stored on the payment, or compute from billing anchor
+        if payment.period_end:
+            from django.utils import timezone
+            import datetime
+            paid_until = timezone.make_aware(
+                datetime.datetime.combine(payment.period_end, datetime.time.max)
+            )
+        else:
+            from apps.core.timeutils import period_end_for, cairo_date
+            from apps.workspaces.models import Workspace
+            try:
+                ws = Workspace.objects.get(id=payment.workspace_id)
+                if ws.billing_anchor_date:
+                    end_date = period_end_for(ws.billing_anchor_date, cairo_date())
+                    from django.utils import timezone
+                    import datetime
+                    paid_until = timezone.make_aware(
+                        datetime.datetime.combine(end_date, datetime.time.max)
+                    )
+            except Workspace.DoesNotExist:
+                pass
+
+    grant_access(
+        workspace_id=payment.workspace_id,
+        student_id=payment.student_id,
+        course_id=course.id,
+        paid_until=paid_until,
+        granted_by_id=actor_id,
+    )
 
 
 def _record_payment_event(payment: StudentPayment, from_status: str, actor_id: int, notes: str = "") -> None:
@@ -32,8 +83,13 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
     # GET: staff need PAYMENT_VIEW; students can see their own (filtered in get_queryset if needed)
     # POST: students create for themselves; owner/staff with PAYMENT_VIEW may create for any student
     # approve/reject actions are POST — permission checked inline
+    # STUDENT/PARENT bypass required_permission_key; their queryset is narrowed below.
+    # TEACHER/TEAM_MEMBER need PAYMENT_VIEW to list all payments.
     permission_map = {
-        "GET": {"required_permission_key": PermissionKey.PAYMENT_VIEW},
+        "GET": {
+            "required_permission_key": PermissionKey.PAYMENT_VIEW,
+            "allow_roles_without_key": frozenset(["STUDENT", "PARENT"]),
+        },
         "POST": {"allowed_roles": ALL_MEMBERS},
         "DELETE": {"owner_only": True},
     }
@@ -41,16 +97,23 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
     def get_queryset(self):
         from apps.core.enums import Role
         from apps.workspaces.models import WorkspaceMembership
+        from apps.parents.models import ParentStudentLink
         qs = StudentPayment.objects.filter(workspace_id=self.request.workspace_id)
-        # Students see only their own payments
         try:
             m = WorkspaceMembership.objects.get(
                 user=self.request.user, workspace_id=self.request.workspace_id
             )
-            if m.role == Role.STUDENT:
-                qs = qs.filter(student_id=self.request.user.id)
         except WorkspaceMembership.DoesNotExist:
-            pass
+            return qs.none()
+        if m.role == Role.STUDENT:
+            return qs.filter(student_id=self.request.user.id)
+        if m.role == Role.PARENT:
+            child_ids = ParentStudentLink.objects.filter(
+                workspace_id=self.request.workspace_id,
+                parent_id=self.request.user.id,
+                unlinked_at__isnull=True,
+            ).values_list("student_id", flat=True)
+            return qs.filter(student_id__in=child_ids)
         return qs
 
     def perform_create(self, serializer):
@@ -148,6 +211,7 @@ class StudentPaymentViewSet(ListModelMixin, RetrieveModelMixin, CreateModelMixin
                 payment.notes = notes
             payment.save(update_fields=["status", "reviewed_at", "reviewed_by_id", "notes", "updated_at"])
             _record_payment_event(payment, from_status, request.user.id, notes or "Approved")
+            _grant_access_on_approval(payment, request.user.id)
 
         return Response(StudentPaymentSerializer(payment).data)
 
@@ -207,3 +271,41 @@ class WorkspacePaymentMethodViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(workspace_id=self.request.workspace_id)
+
+
+class PaymentDueView(APIView):
+    """
+    GET /api/v1/payments/due/?window=7
+    Returns student payments that are DUE or OVERDUE within the next `window` days.
+    TEACHER/TEAM_MEMBER only (requires PAYMENT_VIEW permission).
+    """
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.PAYMENT_VIEW},
+    }
+
+    def get(self, request):
+        from datetime import timedelta
+        from apps.core.enums import StudentPaymentStatus
+
+        try:
+            window = int(request.query_params.get("window", 7))
+        except ValueError:
+            window = 7
+        window = max(1, min(window, 365))
+
+        now = timezone.now().date()
+        cutoff = now + timedelta(days=window)
+
+        payments = StudentPayment.objects.filter(
+            workspace_id=request.workspace_id,
+            status__in=[StudentPaymentStatus.DUE, StudentPaymentStatus.OVERDUE],
+            period_end__lte=cutoff,
+        ).order_by("period_end")
+
+        serializer = StudentPaymentSerializer(payments, many=True)
+        return Response({
+            "window_days": window,
+            "count": payments.count(),
+            "payments": serializer.data,
+        })

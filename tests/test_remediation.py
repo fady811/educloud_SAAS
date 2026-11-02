@@ -188,15 +188,19 @@ class ParentIDORTests(TestCase):
     def test_parent_link_creation_requires_permission(self):
         from apps.parents.views import ParentLinkView
         from apps.core.errors import PermissionDeniedError
-        from django.test import RequestFactory
+        from rest_framework.test import APIRequestFactory
 
         ws = make_workspace()
         parent = make_user()
         student = make_user()
         make_membership(parent, ws, role="PARENT")
 
-        factory = RequestFactory()
-        req = factory.post("/fake/", data={"parent_id": parent.id, "student_id": student.id}, content_type="application/json")
+        factory = APIRequestFactory()
+        req = factory.post(
+            "/fake/",
+            data={"parent_id": parent.id, "student_id": student.id},
+            format="json",
+        )
         req.user = parent
         req.workspace_id = ws.id
 
@@ -320,7 +324,7 @@ class SubscriptionPaymentApprovalTests(TestCase):
         self.package = make_package()
         self.owner = make_user()
         self.admin = make_user()
-        make_membership(self.owner, self.ws, role="OWNER", is_owner=True)
+        make_membership(self.owner, self.ws, role="TEACHER", is_owner=True)
         self.admin.is_staff = True
         self.admin.save()
 
@@ -447,7 +451,7 @@ class StudentPaymentTests(TestCase):
         self.ws = make_workspace()
         self.teacher = make_user()
         self.student = make_user()
-        make_membership(self.teacher, self.ws, role="OWNER", is_owner=True)
+        make_membership(self.teacher, self.ws, role="TEACHER", is_owner=True)
         make_membership(self.student, self.ws, role="STUDENT")
 
     def _make_payment(self):
@@ -513,7 +517,7 @@ class AssessmentAttemptTests(TestCase):
         self.ws = make_workspace()
         self.teacher = make_user()
         self.student = make_user()
-        make_membership(self.teacher, self.ws, role="OWNER", is_owner=True)
+        make_membership(self.teacher, self.ws, role="TEACHER", is_owner=True)
         make_membership(self.student, self.ws, role="STUDENT")
 
     def _make_exam(self):

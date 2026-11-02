@@ -17,6 +17,7 @@ from django.utils import timezone
 # 1. LoginThrottle — 5 / 15-minute window
 # ---------------------------------------------------------------------------
 
+@override_settings(LOGIN_THROTTLE_MAX_ATTEMPTS=5)
 class LoginThrottleTests(TestCase):
     """
     Tests the custom LoginThrottle class directly (no HTTP stack needed).

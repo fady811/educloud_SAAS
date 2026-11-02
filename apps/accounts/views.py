@@ -18,7 +18,9 @@ from apps.accounts.serializers import (
     UserSerializer,
     UserSessionSerializer,
 )
+from apps.accounts.enums import PermissionKey
 from apps.core.errors import ValidationFailed
+from apps.core.permissions import WorkspacePermission
 
 class LoginThrottle(BaseThrottle):
     """
@@ -165,6 +167,186 @@ class SessionRevokeView(APIView):
         from apps.accounts.services.sessions import revoke_others
         revoke_others(request, request.user)
         return Response({"detail": "Other sessions revoked."})
+
+
+class StudentListCreateView(APIView):
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.STUDENT_VIEW},
+        "POST": {"required_permission_key": PermissionKey.STUDENT_CREATE},
+    }
+
+    def get(self, request: Request) -> Response:
+        from apps.accounts.services.students import get_students
+        from apps.accounts.serializers import WorkspaceMembershipStudentSerializer
+        qs = get_students(request.workspace_id)
+        return Response(WorkspaceMembershipStudentSerializer(qs, many=True).data)
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.services.students import create_student
+        from apps.accounts.serializers import WorkspaceMembershipStudentSerializer
+        membership = create_student(
+            workspace_id=request.workspace_id,
+            email=request.data.get("email") or None,
+            phone=request.data.get("phone") or None,
+            first_name=request.data.get("first_name", ""),
+            last_name=request.data.get("last_name", ""),
+            actor_id=request.user.id,
+        )
+        return Response(WorkspaceMembershipStudentSerializer(membership).data, status=status.HTTP_201_CREATED)
+
+
+class StudentDetailView(APIView):
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.STUDENT_VIEW},
+        "PATCH": {"required_permission_key": PermissionKey.STUDENT_EDIT},
+        "DELETE": {"required_permission_key": PermissionKey.STUDENT_DEACTIVATE},
+    }
+
+    def _get_membership(self, request, pk):
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.core.enums import Role
+        from apps.core.errors import NotFound
+        try:
+            return WorkspaceMembership.objects.select_related("user").get(
+                user_id=pk, workspace_id=request.workspace_id, role=Role.STUDENT
+            )
+        except WorkspaceMembership.DoesNotExist:
+            raise NotFound("Student not found.")
+
+    def get(self, request: Request, pk: int) -> Response:
+        from apps.accounts.serializers import WorkspaceMembershipStudentSerializer
+        m = self._get_membership(request, pk)
+        return Response(WorkspaceMembershipStudentSerializer(m).data)
+
+    def patch(self, request: Request, pk: int) -> Response:
+        from apps.accounts.serializers import WorkspaceMembershipStudentSerializer
+        m = self._get_membership(request, pk)
+        user = m.user
+        for field in ("first_name", "last_name"):
+            if field in request.data:
+                setattr(user, field, request.data[field])
+        user.save(update_fields=["first_name", "last_name"])
+        return Response(WorkspaceMembershipStudentSerializer(m).data)
+
+    def delete(self, request: Request, pk: int) -> Response:
+        from apps.accounts.services.students import deactivate_student
+        deactivate_student(
+            workspace_id=request.workspace_id,
+            student_id=pk,
+            actor_id=request.user.id,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StudentImportView(APIView):
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "POST": {"required_permission_key": PermissionKey.STUDENT_CREATE},
+    }
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.services.bulk_import import import_students
+        from apps.accounts.serializers import StudentImportJobSerializer
+
+        csv_file = request.FILES.get("file")
+        if not csv_file:
+            raise ValidationFailed("file is required.")
+        content = csv_file.read()
+
+        job = import_students(
+            workspace_id=request.workspace_id,
+            created_by_id=request.user.id,
+            csv_content=content,
+        )
+        return Response(
+            StudentImportJobSerializer(job).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class StudentImportDetailView(APIView):
+    permission_classes = [WorkspacePermission]
+    permission_map = {
+        "GET": {"required_permission_key": PermissionKey.STUDENT_VIEW},
+    }
+
+    def get(self, request: Request, pk: int) -> Response:
+        from apps.accounts.models import StudentImportJob
+        from apps.accounts.serializers import StudentImportJobSerializer
+        from apps.core.errors import NotFound
+        try:
+            job = StudentImportJob.objects.get(id=pk, workspace_id=request.workspace_id)
+        except StudentImportJob.DoesNotExist:
+            raise NotFound("Import job not found.")
+        return Response(StudentImportJobSerializer(job).data)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.services.verification import verify_token
+        token = request.data.get("token", "")
+        if not token:
+            raise ValidationFailed("token is required.")
+        verify_token(token)
+        return Response({"detail": "Account verified."})
+
+
+class ResendVerificationView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.services.verification import resend_verification
+        from apps.accounts.models import User
+        from apps.accounts.tasks import send_verification_email
+
+        identifier = request.data.get("email") or request.data.get("phone")
+        if not identifier:
+            raise ValidationFailed("email or phone is required.")
+
+        user = None
+        if "@" in str(identifier):
+            user = User.objects.filter(email=identifier).first()
+        else:
+            from apps.core.validators import normalize_phone
+            user = User.objects.filter(phone=normalize_phone(identifier)).first()
+
+        if user and not user.is_verified:
+            token = resend_verification(user)
+            if user.email:
+                send_verification_email.delay(user.id, token.id)
+
+        return Response({"detail": "If the account exists and is unverified, a new code has been sent."})
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.services.password_reset import request_reset
+        identifier = request.data.get("email") or request.data.get("phone") or ""
+        if not identifier:
+            raise ValidationFailed("email or phone is required.")
+        request_reset(identifier=identifier)
+        return Response({"detail": "If the account exists, a reset link has been sent."})
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.services.password_reset import confirm_reset
+        token = request.data.get("token", "")
+        new_password = request.data.get("password", "")
+        if not token or not new_password:
+            raise ValidationFailed("token and password are required.")
+        if len(new_password) < 8:
+            raise ValidationFailed("password must be at least 8 characters.")
+        confirm_reset(token=token, new_password=new_password)
+        return Response({"detail": "Password has been reset."})
 
 
 class MeWorkspacesView(APIView):

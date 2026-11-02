@@ -82,6 +82,7 @@ class PaymentStatusLink(models.TextChoices):
 
 
 class LessonParentType(models.TextChoices):
+    COURSE = "COURSE", "Course"
     WEEK = "WEEK", "Week"
     SECTION = "SECTION", "Section"
 
@@ -289,10 +290,14 @@ class ErrorCode(models.TextChoices):
     GRACE_PERIOD_RESTRICTED = "GRACE_PERIOD_RESTRICTED", "Action restricted in grace period"
     SUBDOMAIN_TAKEN = "SUBDOMAIN_TAKEN", "Subdomain taken"
     ILLEGAL_TRANSITION = "ILLEGAL_TRANSITION", "Illegal state transition"
-    # Enrollment
+    # Enrollment / content access
     ALREADY_ENROLLED = "ALREADY_ENROLLED", "Already enrolled"
     NOT_ENROLLED = "NOT_ENROLLED", "Not enrolled"
+    ENROLLMENT_INACTIVE = "ENROLLMENT_INACTIVE", "Enrollment not active"
     ENROLLMENT_EXPIRED = "ENROLLMENT_EXPIRED", "Enrollment expired"
+    OUTSIDE_DATE_WINDOW = "OUTSIDE_DATE_WINDOW", "Outside enrollment date window"
+    PAYMENT_REQUIRED = "PAYMENT_REQUIRED", "Payment required to access this content"
+    PAYMENT_PERIOD_EXPIRED = "PAYMENT_PERIOD_EXPIRED", "Payment period has expired"
     ACCESS_DENIED = "ACCESS_DENIED", "Access denied"
     HAS_ACTIVE_PAID_ENROLLMENTS = "HAS_ACTIVE_PAID_ENROLLMENTS", "Has active paid enrollments"
     # Groups

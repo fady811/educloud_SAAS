@@ -10,7 +10,7 @@ from apps.assessments.serializers import (
     ExamSerializer, QuestionSerializer, ExamAttemptSerializer,
     AssignmentSerializer, AssignmentSubmissionSerializer,
 )
-from apps.assessments.services.attempts import start_attempt, submit_attempt
+from apps.assessments.services.attempts import start_attempt, submit_attempt, autosave_answers
 
 
 class ExamViewSet(ModelViewSet):
@@ -50,10 +50,31 @@ class ExamAttemptViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
         "GET": {"allowed_roles": ALL_MEMBERS},
         # start and submit are POST — students only
         "POST": {"allowed_roles": STUDENT_ONLY},
+        # save_answers PATCH action — students only
+        "PATCH": {"allowed_roles": STUDENT_ONLY},
     }
 
     def get_queryset(self):
-        return ExamAttempt.objects.filter(workspace_id=self.request.workspace_id)
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.parents.models import ParentStudentLink
+        qs = ExamAttempt.objects.filter(workspace_id=self.request.workspace_id)
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=self.request.user, workspace_id=self.request.workspace_id
+            )
+        except WorkspaceMembership.DoesNotExist:
+            return qs.none()
+        if m.role == Role.STUDENT:
+            return qs.filter(student_id=self.request.user.id)
+        if m.role == Role.PARENT:
+            child_ids = ParentStudentLink.objects.filter(
+                workspace_id=self.request.workspace_id,
+                parent_id=self.request.user.id,
+                unlinked_at__isnull=True,
+            ).values_list("student_id", flat=True)
+            return qs.filter(student_id__in=child_ids)
+        return qs
 
     @action(detail=False, methods=["post"])
     def start(self, request):
@@ -66,19 +87,41 @@ class ExamAttemptViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
 
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
-        from apps.core.errors import PermissionDeniedError
-        # Only the owner of the attempt may submit it
+        from apps.core.errors import PermissionDeniedError, NotFound
         try:
             attempt_obj = ExamAttempt.objects.get(id=int(pk), workspace_id=request.workspace_id)
         except ExamAttempt.DoesNotExist:
-            from apps.core.errors import NotFound
             raise NotFound("Attempt not found")
         if attempt_obj.student_id != request.user.id:
             raise PermissionDeniedError("You may only submit your own attempt.")
         attempt = submit_attempt(
             attempt_id=int(pk),
             student_id=request.user.id,
-            answers=request.data.get("answers", {}),
+            answers=request.data.get("answers") or None,
+        )
+        return Response(ExamAttemptSerializer(attempt).data)
+
+    @action(detail=True, methods=["patch"], url_path="answers")
+    def save_answers(self, request, pk=None):
+        """Autosave endpoint — STUDENT_ONLY, optimistic compare-and-set."""
+        from apps.core.errors import NotFound, PermissionDeniedError, ValidationFailed
+        try:
+            attempt_obj = ExamAttempt.objects.get(id=int(pk), workspace_id=request.workspace_id)
+        except ExamAttempt.DoesNotExist:
+            raise NotFound("Attempt not found")
+        if attempt_obj.student_id != request.user.id:
+            raise PermissionDeniedError("You may only save answers for your own attempt.")
+        answers = request.data.get("answers")
+        if answers is None:
+            raise ValidationFailed("answers is required.")
+        version = request.data.get("version")
+        if version is None:
+            raise ValidationFailed("version is required.")
+        attempt = autosave_answers(
+            attempt_id=int(pk),
+            student_id=request.user.id,
+            answers=answers,
+            version=int(version),
         )
         return Response(ExamAttemptSerializer(attempt).data)
 
@@ -108,4 +151,23 @@ class AssignmentSubmissionViewSet(ListModelMixin, RetrieveModelMixin, CreateMode
     }
 
     def get_queryset(self):
-        return AssignmentSubmission.objects.filter(workspace_id=self.request.workspace_id)
+        from apps.core.enums import Role
+        from apps.workspaces.models import WorkspaceMembership
+        from apps.parents.models import ParentStudentLink
+        qs = AssignmentSubmission.objects.filter(workspace_id=self.request.workspace_id)
+        try:
+            m = WorkspaceMembership.objects.get(
+                user=self.request.user, workspace_id=self.request.workspace_id
+            )
+        except WorkspaceMembership.DoesNotExist:
+            return qs.none()
+        if m.role == Role.STUDENT:
+            return qs.filter(student_id=self.request.user.id)
+        if m.role == Role.PARENT:
+            child_ids = ParentStudentLink.objects.filter(
+                workspace_id=self.request.workspace_id,
+                parent_id=self.request.user.id,
+                unlinked_at__isnull=True,
+            ).values_list("student_id", flat=True)
+            return qs.filter(student_id__in=child_ids)
+        return qs

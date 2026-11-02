@@ -83,9 +83,13 @@ class WorkspacePermission(IsWorkspaceMember):
         }
 
     Rule dict keys:
-      allowed_roles         frozenset[str]  — roles permitted (Role enum values).
-      required_permission_key str           — PermissionKey; OWNER bypasses implicitly.
-      owner_only            bool            — only the workspace owner (is_owner=True).
+      allowed_roles           frozenset[str]  — roles permitted (Role enum values).
+      required_permission_key str             — PermissionKey; OWNER bypasses implicitly.
+      owner_only              bool            — only the workspace owner (is_owner=True).
+      allow_roles_without_key frozenset[str]  — roles that bypass required_permission_key.
+                                                Roles NOT in this set still need the key.
+                                                Used when some roles (e.g. STUDENT) need
+                                                access to their own data without a key grant.
 
     If a method is absent from the map the request is denied.
     If the view declares no permission_map at all, every method is denied and an
@@ -131,15 +135,18 @@ class WorkspacePermission(IsWorkspaceMember):
         if rule.get("owner_only"):
             return bool(membership.is_owner)
 
-        # allowed_roles check
+        # allowed_roles check — role must be in the set (is_owner does NOT bypass this)
         allowed_roles = rule.get("allowed_roles")
         if allowed_roles is not None and membership.role not in allowed_roles:
             return False
 
-        # required_permission_key — owner bypasses; others need explicit grant
+        # required_permission_key — owner bypasses; allow_roles_without_key bypasses for listed roles
         required_key = rule.get("required_permission_key")
         if required_key:
             if membership.is_owner:
+                return True
+            allow_without_key = rule.get("allow_roles_without_key", frozenset())
+            if membership.role in allow_without_key:
                 return True
             return _check_permission_key(user, workspace_id, required_key)
 
@@ -174,8 +181,9 @@ class IsParentOfStudent(IsAuthenticated):
             return False
         return ParentStudentLink.objects.filter(
             workspace_id=workspace_id,
-            parent_user=request.user,
-            student_user_id=student_id,
+            parent_id=request.user.id,
+            student_id=student_id,
+            unlinked_at__isnull=True,
         ).exists()
 
 

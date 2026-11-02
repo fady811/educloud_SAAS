@@ -36,7 +36,7 @@ def request_reset(*, identifier: str) -> str:
 
 
 def confirm_reset(*, token: str, new_password: str) -> None:
-    from apps.accounts.models import PasswordResetToken
+    from apps.accounts.models import PasswordResetToken, UserSession
 
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with transaction.atomic():
@@ -52,3 +52,7 @@ def confirm_reset(*, token: str, new_password: str) -> None:
         prt.user.save(update_fields=["password"])
         prt.used_at = timezone.now()
         prt.save(update_fields=["used_at"])
+        # Revoke all active sessions so stolen-token attacks can't persist access
+        UserSession.objects.filter(user=prt.user, revoked_at__isnull=True).update(
+            revoked_at=timezone.now()
+        )
