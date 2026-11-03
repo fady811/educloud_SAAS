@@ -111,46 +111,71 @@ def get_upgrade_quote(current_subscription_id: int, new_package_id: int) -> dict
     """
     Compute upgrade proration quote without writing anything.
     Validates all business rules and returns the quote dict.
+
+    Same-duration upgrade:
+        new_daily   = new_pkg.price_egp / total_days
+        charge_base = quantize(new_daily * remaining_days)
+        amount_due  = charge_base - credit
+        period end does NOT move.
+
+    Duration-change upgrade:
+        charge_base = new_pkg.price_egp  (full new term)
+        amount_due  = charge_base - credit
+        period end  = approval + relativedelta(months=new_pkg.duration_months).
     """
     from apps.billing.models import Package, Subscription, SubscriptionPayment
     from apps.core.errors import Conflict, ValidationFailed
+    from apps.core.timeutils import cairo_date
+    from dateutil.relativedelta import relativedelta
 
     old_sub = Subscription.objects.select_related("package").get(id=current_subscription_id)
     if old_sub.status != SubscriptionStatus.ACTIVE:
         raise Conflict("Only ACTIVE subscriptions can be upgraded.", code="SUBSCRIPTION_NOT_FOUND")
     new_pkg = Package.objects.get(id=new_package_id)
 
-    # Must not downgrade
-    if new_pkg.price_egp <= old_sub.package.price_egp:
-        raise ValidationFailed(
-            "Cannot upgrade to a cheaper or equal plan.",
-            code="UPGRADE_NOT_ELIGIBLE",
-        )
+    # Capability check: no limit may decrease, no feature may be removed.
+    # Price test additionally applies within the same duration.
+    _check_upgrade_eligibility(old_sub.package, new_pkg)
 
     now = timezone.now()
-    remaining_days = max(Decimal("0"), Decimal(str((old_sub.ends_at - now).days)))
-    total_days = max(Decimal("1"), Decimal(str((old_sub.ends_at - old_sub.starts_at).days)))
+    today = cairo_date()
+
+    # remaining_days uses Cairo business dates (integer days from today to ends_at date).
+    ends_at_cairo = old_sub.ends_at.astimezone(
+        __import__("pytz").timezone("Africa/Cairo")
+    ).date()
+    remaining_days = max(Decimal("0"), Decimal(str((ends_at_cairo - today).days)))
+    total_days = max(
+        Decimal("1"),
+        Decimal(str((old_sub.ends_at.date() - old_sub.starts_at.date()).days)),
+    )
     credit = (old_sub.package.price_egp / total_days * remaining_days).quantize(Decimal("0.01"))
 
-    # Determine new end date
     same_duration = (old_sub.package.duration_months == new_pkg.duration_months)
     if same_duration:
+        # Charge only for the remaining days at the new daily rate.
+        new_daily = new_pkg.price_egp / total_days
+        charge_base = (new_daily * remaining_days).quantize(Decimal("0.01"))
         new_ends_at = old_sub.ends_at  # period end does not move
     else:
-        new_ends_at = now + datetime.timedelta(days=30 * new_pkg.duration_months)
+        # Full new term; period end advances.
+        charge_base = new_pkg.price_egp
+        new_ends_at = now + relativedelta(months=new_pkg.duration_months)
+        if new_ends_at < old_sub.ends_at:
+            raise ValidationFailed(
+                "Upgrade would shorten the coverage period.",
+                code="UPGRADE_WOULD_SHORTEN_PERIOD",
+            )
 
-    # New end must not be earlier than current
-    if new_ends_at < old_sub.ends_at and not same_duration:
-        raise ValidationFailed(
-            "Upgrade would shorten the coverage period.",
-            code="UPGRADE_WOULD_SHORTEN_PERIOD",
-        )
+    amount_due = (charge_base - credit).quantize(Decimal("0.01"))
 
-    amount_due = max(Decimal("0"), new_pkg.price_egp - credit)
-    if amount_due < MIN_UPGRADE_CHARGE_EGP and amount_due > Decimal("0"):
+    if amount_due < MIN_UPGRADE_CHARGE_EGP:
+        from apps.core.enums import ErrorCode
         raise ValidationFailed(
-            f"Upgrade charge ({amount_due} EGP) is below minimum ({MIN_UPGRADE_CHARGE_EGP} EGP).",
-            code="UPGRADE_MIN_CHARGE",
+            f"Upgrade charge ({amount_due} EGP) is below minimum ({MIN_UPGRADE_CHARGE_EGP} EGP). "
+            f"credit={credit}, charge_base={charge_base}",
+            code=ErrorCode.INVALID_UPGRADE_CHARGE,
+            details={"credit_egp": str(credit), "charge_base_egp": str(charge_base), "amount_due_egp": str(amount_due)},
         )
 
     # Check no pending renewal
@@ -165,12 +190,53 @@ def get_upgrade_quote(current_subscription_id: int, new_package_id: int) -> dict
     return {
         "old_package_id": old_sub.package.id,
         "new_package_id": new_pkg.id,
+        "same_duration": same_duration,
         "remaining_days": int(remaining_days),
+        "total_days": int(total_days),
         "credit_egp": str(credit),
+        "charge_base_egp": str(charge_base),
         "amount_due_egp": str(amount_due),
         "new_ends_at": new_ends_at.isoformat(),
         "current_subscription_id": current_subscription_id,
     }
+
+
+def _check_upgrade_eligibility(old_pkg, new_pkg) -> None:
+    """
+    Refuse if any capability is lower or any limit is tighter in the new package.
+    Within the same duration, also refuse if price is not strictly higher.
+    """
+    from apps.core.errors import ValidationFailed
+
+    same_duration = old_pkg.duration_months == new_pkg.duration_months
+    if same_duration and new_pkg.price_egp <= old_pkg.price_egp:
+        raise ValidationFailed(
+            "Cannot upgrade to a cheaper or equal plan within the same duration.",
+            code="UPGRADE_NOT_ELIGIBLE",
+        )
+
+    # Capability checks: None means unlimited — treat as +∞.
+    def _worse(old_val, new_val) -> bool:
+        """True if new_val is strictly worse (lower limit) than old_val."""
+        if old_val is None:
+            return new_val is not None  # old was unlimited, new is limited → worse
+        if new_val is None:
+            return False  # new is unlimited → not worse
+        return new_val < old_val
+
+    checks = [
+        ("max_students", old_pkg.max_students, new_pkg.max_students),
+        ("max_subjects_courses", old_pkg.max_subjects_courses, new_pkg.max_subjects_courses),
+        ("max_groups", old_pkg.max_groups, new_pkg.max_groups),
+        ("max_team_members", old_pkg.max_team_members, new_pkg.max_team_members),
+        ("storage_gb", old_pkg.storage_gb, new_pkg.storage_gb),
+    ]
+    for field, old_val, new_val in checks:
+        if _worse(old_val, new_val):
+            raise ValidationFailed(
+                f"New package has a lower {field} limit than the current package.",
+                code="UPGRADE_NOT_ELIGIBLE",
+            )
 
 
 def prorate_upgrade(
@@ -202,11 +268,12 @@ def prorate_upgrade(
                     code="QUOTE_STALE",
                 )
 
-        same_duration = (old_sub.package.duration_months == new_pkg.duration_months)
-        if same_duration:
-            new_ends_at = old_sub.ends_at
-        else:
-            new_ends_at = timezone.now() + datetime.timedelta(days=30 * new_pkg.duration_months)
+        from dateutil.relativedelta import relativedelta as _rd
+        new_ends_at_str = quote["new_ends_at"]
+        # Parse the ISO string stored in the quote (already computed correctly).
+        from django.utils.dateparse import parse_datetime
+        import dateutil.parser as _dparser
+        new_ends_at = _dparser.isoparse(new_ends_at_str)
 
         # Supersede old subscription (do not mutate snapshot — INV-27)
         old_sub.status = SubscriptionStatus.SUPERSEDED

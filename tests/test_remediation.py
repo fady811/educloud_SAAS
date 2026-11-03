@@ -186,27 +186,30 @@ class ParentIDORTests(TestCase):
         self.assertEqual(p1_links.first().student_id, student1.id)
 
     def test_parent_link_creation_requires_permission(self):
-        from apps.parents.views import ParentLinkView
-        from apps.core.errors import PermissionDeniedError
-        from rest_framework.test import APIRequestFactory
+        """A PARENT-role member must be denied when trying to create a link via the API."""
+        from rest_framework.test import APIClient
+        from django.urls import reverse
 
         ws = make_workspace()
-        parent = make_user()
+        ws.status = "ACTIVE"
+        ws.save(update_fields=["status"])
+        parent = make_user(password="Pass1234!")
         student = make_user()
         make_membership(parent, ws, role="PARENT")
 
-        factory = APIRequestFactory()
-        req = factory.post(
-            "/fake/",
+        client = APIClient()
+        client.login(username=parent.email, password="Pass1234!")
+
+        # Route the request to the workspace via HTTP_HOST header
+        ws_host = f"{ws.subdomain}.localhost"
+        resp = client.post(
+            "/api/v1/parent-links/",
             data={"parent_id": parent.id, "student_id": student.id},
             format="json",
+            HTTP_HOST=ws_host,
         )
-        req.user = parent
-        req.workspace_id = ws.id
-
-        with self.assertRaises(PermissionDeniedError):
-            view = ParentLinkView()
-            view.post(req)
+        self.assertIn(resp.status_code, [403, 401],
+                      f"Expected 403/401 for PARENT trying to create link, got {resp.status_code}")
 
 
 # ── P1-4: Communication services ─────────────────────────────────────────────

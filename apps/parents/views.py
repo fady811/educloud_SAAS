@@ -41,9 +41,8 @@ class ParentLinkView(APIView):
         except WorkspaceMembership.DoesNotExist:
             raise PermissionDeniedError("Not a workspace member.")
 
-        data = getattr(request, "data", None) or {}
-        parent_id = data.get("parent_id")
-        student_id = data.get("student_id")
+        parent_id = request.data.get("parent_id")
+        student_id = request.data.get("student_id")
 
         if not parent_id or not student_id:
             raise ValidationFailed("parent_id and student_id are required.")
@@ -52,7 +51,7 @@ class ParentLinkView(APIView):
             workspace_id=request.workspace_id,
             parent_id=parent_id,
             student_id=student_id,
-            defaults={"relationship": data.get("relationship", "")},
+            defaults={"relationship": request.data.get("relationship", "")},
         )
         if not created:
             raise Conflict("Link already exists")
@@ -63,9 +62,8 @@ class ParentLinkView(APIView):
         from apps.core.errors import NotFound
         from django.utils import timezone
 
-        data = getattr(request, "data", None) or {}
-        parent_id = data.get("parent_id")
-        student_id = data.get("student_id")
+        parent_id = request.data.get("parent_id")
+        student_id = request.data.get("student_id")
         link = ParentStudentLink.objects.filter(
             workspace_id=request.workspace_id,
             parent_id=parent_id,

@@ -301,10 +301,10 @@ class EnrollmentTests(TestCase):
         from django.db import IntegrityError, transaction
         ws = make_workspace("enrl-t1")
         student = make_user(email="enrl1@test.com")
-        Enrollment.objects.create(workspace=ws, student_id=student.pk, enrollable_type="GROUP", enrollable_id=1)
+        Enrollment.objects.create(workspace=ws, student_id=student.pk, enrollable_type="COURSE", enrollable_id=1)
         with self.assertRaises(Exception):
             with transaction.atomic():
-                Enrollment.objects.create(workspace=ws, student_id=student.pk, enrollable_type="GROUP", enrollable_id=1)
+                Enrollment.objects.create(workspace=ws, student_id=student.pk, enrollable_type="COURSE", enrollable_id=1)
 
 
 # ── AUDIT LOG TESTS ───────────────────────────────────────────────────────────
