@@ -263,3 +263,71 @@ Test run: **36 tests, 0 failures, 0 errors.**
 Workspace owners whose membership record stores `role="OWNER"` (a non-standard value) were denied by the `allowed_roles` check at every endpoint, since `"OWNER"` is not in `ALL_MEMBERS`.
 
 **Fix:** Added `if not membership.is_owner: return False` inside the `allowed_roles` branch so owners bypass the role-string check, consistent with the existing bypass for `required_permission_key`.
+
+---
+
+### 5.1 — Money bug: get_upgrade_quote overcharges same-duration upgrades
+
+**Files:** `apps/billing/services/subscriptions.py`, `apps/core/enums.py`
+
+Same-duration upgrades used `new_pkg.price_egp - credit`, charging for a full new period instead of only the remaining days.
+
+**Fix:**
+- Same-duration: `charge_base = (new_pkg.price_egp / total_days) * remaining_days`; `amount_due = charge_base - credit`
+- Duration-change: `charge_base = new_pkg.price_egp`; `amount_due = new_pkg.price_egp - credit` (unchanged)
+- Removed `max(Decimal("0"), ...)` clamp; amounts below `MIN_UPGRADE_CHARGE_EGP` (1.00 EGP) raise `INVALID_UPGRADE_CHARGE`
+- Added `_check_upgrade_eligibility()`: refuses any upgrade where a numeric limit is lower on the new package (`None` = unlimited = ∞)
+- Replaced `30 * duration_months` arithmetic with `dateutil.relativedelta` for correct month-end handling
+- Uses `cairo_date()` for remaining-days calculation (Cairo local date, not UTC)
+
+---
+
+### 5.2 — Free courses inaccessible after Round 4
+
+**Files:** `apps/enrollment/services/access.py`, `apps/enrollment/services/eligibility.py`, `tests/test_round3.py`
+
+Round 4 removed the free-course access bypass, requiring a `StudentCourseAccess` row even for free courses.
+
+**Fix:**
+- Restored step 4b in `check_lesson_access`: after the enrollment check, if `course.pricing_type == PricingType.FREE`, return immediately (no access row needed)
+- `enroll()` now auto-calls `grant_access(paid_until=None)` for FREE courses as a best-effort optimisation (wrapped in try/except; the check does not require the row)
+- Updated `test_expired_access_denies_student` in `test_round3.py` to use a `MONTHLY` course so it correctly tests the expiry-check path on a paid course
+
+---
+
+### 5.3 — Django pin documented (non-LTS 6.1)
+
+**Files:** `DECISIONS.md` (D-04)
+
+Decision documented; no code change required.
+
+---
+
+### 5.4 — Enum CHECK constraint audit complete
+
+**Files:** 11 new migration files across billing, payments, enrollment, assessments, notifications, support, groups, communication, files, workspaces, content
+
+**Fix:**
+- `apps/groups/migrations/0002_enum_check_constraints.py`: corrected `model_name` from `"attendance"` to `"attendancerecord"`
+- `apps/workspaces/migrations/0003_more_enum_check_constraints.py`: corrected `model_name` from `"workspacestatuslog"` to `"workspacestatushistory"`
+- Test data fixed: `test_audit.py` `enrollable_type="GROUP"` → `"COURSE"`; `test_permission_matrix.py` `grade_level="G5"` → `"PRIMARY_1"` and added `payment_model` to `StudentPayment` fixture
+
+---
+
+### 5.5 — CI suites: isolation and concurrency
+
+**Files:** `tests/isolation/test_cross_tenant.py`, `tests/concurrency/test_concurrent_ops.py`
+
+Added two new test suites per Round 5 spec:
+- **isolation**: 9 tests across 6 cross-tenant scenarios (enrollments, payments, tickets, subscriptions, groups, notifications) — registry-driven, HTTP-level assertions
+- **concurrency**: 3 `TransactionTestCase` tests using real threads — concurrent enroll (exactly-one winner), concurrent grant_access (idempotent), concurrent workspace status transition (consistent final state)
+
+---
+
+### 5.6 — ParentLinkView: production code shaped by test harness
+
+**Files:** `apps/parents/views.py`, `tests/test_remediation.py`
+
+`post()` and `delete()` used `getattr(request, "data", None) or {}` because a test called `view.post()` directly bypassing DRF dispatch, so `request.data` wasn't populated.
+
+**Fix:** Restored `request.data.get(...)` in both methods; updated `test_parent_link_creation_requires_permission` to use `APIClient` with proper HTTP dispatch.

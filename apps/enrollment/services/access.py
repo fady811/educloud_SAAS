@@ -125,17 +125,22 @@ def check_lesson_access(
     except Course.DoesNotExist:
         raise NotFound("Lesson not found.")
 
-    # Step 4: free preview
+    # Step 4: free preview — always allow; no access row needed
     if lesson.is_free_preview:
         return
 
-    # Step 5: active enrollment (COURSE or SUBJECT)
+    # Step 5: active enrollment (COURSE or SUBJECT) — required even for free courses
     enrollment = _find_active_enrollment(workspace_id, student_id, course)
     if enrollment is None:
         raise PermissionDeniedError(
             "You are not enrolled in this course.",
             code=ErrorCode.ENROLLMENT_INACTIVE,
         )
+
+    # Step 4b: free course — enrolled students need no access row
+    from apps.core.enums import PricingType
+    if course.pricing_type == PricingType.FREE:
+        return
 
     # Step 6: StudentCourseAccess row
     try:

@@ -285,31 +285,31 @@ class PermissionMatrixTest(_E2EBase):
 
     def test_content_create_owner_allowed(self):
         r = self._do("POST", self.c_owner, "subjects/",
-                     {"name": f"Sub-{uuid.uuid4().hex[:4]}", "grade_level": "G5", "color": "#ffffff"},
+                     {"name": f"Sub-{uuid.uuid4().hex[:4]}", "grade_level": "PRIMARY_1", "color": "#ffffff"},
                      host=self.ws_host)
         self.assertIn(r.status_code, [200, 201], r.content)
 
     def test_content_create_member_with_key_allowed(self):
         r = self._do("POST", self.c_with_key, "subjects/",
-                     {"name": f"Sub-{uuid.uuid4().hex[:4]}", "grade_level": "G5", "color": "#ffffff"},
+                     {"name": f"Sub-{uuid.uuid4().hex[:4]}", "grade_level": "PRIMARY_1", "color": "#ffffff"},
                      host=self.ws_host)
         self.assertIn(r.status_code, [200, 201], r.content)
 
     def test_content_create_member_without_key_denied(self):
         r = self._do("POST", self.c_no_key, "subjects/",
-                     {"name": "X", "grade_level": "G5", "color": "#ffffff"},
+                     {"name": "X", "grade_level": "PRIMARY_1", "color": "#ffffff"},
                      host=self.ws_host)
         self.assertEqual(r.status_code, 403, r.content)
 
     def test_content_create_student_denied(self):
         r = self._do("POST", self.c_student, "subjects/",
-                     {"name": "X", "grade_level": "G5", "color": "#ffffff"},
+                     {"name": "X", "grade_level": "PRIMARY_1", "color": "#ffffff"},
                      host=self.ws_host)
         self.assertEqual(r.status_code, 403, r.content)
 
     def test_content_create_anon_denied(self):
         r = self._do("POST", self.c_anon, "subjects/",
-                     {"name": "X", "grade_level": "G5", "color": "#ffffff"},
+                     {"name": "X", "grade_level": "PRIMARY_1", "color": "#ffffff"},
                      host=self.ws_host)
         self.assertIn(r.status_code, [401, 403], r.content)
 
@@ -664,9 +664,11 @@ class PaymentDataIsolationTest(_E2EBase):
         from apps.payments.models import StudentPayment
         self.pay_s1 = StudentPayment.objects.create(
             workspace=self.ws, student=self.s1, amount_egp="100.00", status="PENDING",
+            payment_model="COURSE_ONE_TIME",
         )
         self.pay_s2 = StudentPayment.objects.create(
             workspace=self.ws, student=self.s2, amount_egp="200.00", status="PENDING",
+            payment_model="COURSE_ONE_TIME",
         )
 
     def test_student_list_sees_only_own_payments(self):

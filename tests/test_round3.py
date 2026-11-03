@@ -414,14 +414,39 @@ class LessonAccessTest(_Base):
         )
         self.assertTrue(result)
 
-    def test_paid_lesson_inaccessible_without_enrollment(self):
+    def test_free_course_inaccessible_without_enrollment(self):
+        """
+        Round 5 fix: FREE courses now allow enrolled students without an access row.
+        But enrollment is still required — unenrolled students are denied.
+        (Round 4 had this wrong: it trusted a test that was written before any access
+        rows existed and asserted denial for everything. That locked in the bug.)
+        """
         from apps.enrollment.services.access import lesson_accessible
         result = lesson_accessible(
             workspace_id=self.ws.id,
             student_id=self.student.id,
             lesson_id=self.paid_lesson.id,
         )
-        self.assertFalse(result)
+        self.assertFalse(result)  # not enrolled → ENROLLMENT_INACTIVE → False
+
+    def test_free_course_accessible_with_enrollment_no_access_row(self):
+        """
+        An enrolled student on a FREE course must be able to view any non-preview lesson
+        without a StudentCourseAccess row (no payment step).
+        """
+        from apps.enrollment.services.access import lesson_accessible
+        from apps.enrollment.models import Enrollment
+        Enrollment.objects.create(
+            workspace=self.ws, student_id=self.student.id,
+            enrollable_type="COURSE", enrollable_id=self.course.id,
+        )
+        # No StudentCourseAccess row — should still be True for FREE course
+        result = lesson_accessible(
+            workspace_id=self.ws.id,
+            student_id=self.student.id,
+            lesson_id=self.paid_lesson.id,
+        )
+        self.assertTrue(result)
 
     def test_paid_lesson_accessible_with_enrollment_and_access(self):
         from apps.enrollment.services.access import lesson_accessible
@@ -434,6 +459,7 @@ class LessonAccessTest(_Base):
         self.assertTrue(result)
 
     def test_lesson_content_endpoint_student_no_access_denied(self):
+        """Unenrolled student gets 403."""
         c = self._login(self.student_email)
         r = self._do("GET", c, f"lessons/{self.paid_lesson.id}/content/", host=self.ws_host)
         self.assertEqual(r.status_code, 403)
@@ -449,18 +475,32 @@ class LessonAccessTest(_Base):
         self.assertEqual(r.status_code, 200)
 
     def test_expired_access_denies_student(self):
+        """
+        An expired StudentCourseAccess row on a MONTHLY course must deny the student.
+        Uses a separate MONTHLY course to avoid the FREE-course bypass (step 4b).
+        """
         from apps.enrollment.services.access import lesson_accessible
-        from apps.content.models import StudentCourseAccess
+        from apps.content.models import Course, Lesson, StudentCourseAccess
         from apps.enrollment.models import Enrollment
         from datetime import timedelta
+
+        # Create a MONTHLY (paid) course with one non-preview lesson
+        paid_course = Course.objects.create(
+            workspace=self.ws, title="Monthly Course",
+            visibility="PUBLISHED", pricing_type="MONTHLY",
+        )
+        paid_lesson2 = Lesson.objects.create(
+            workspace=self.ws, parent_type="COURSE", parent_id=paid_course.id,
+            title="Paid2", order=0, is_free_preview=False,
+        )
         Enrollment.objects.create(
             workspace=self.ws, student_id=self.student.id,
-            enrollable_type="COURSE", enrollable_id=self.course.id,
+            enrollable_type="COURSE", enrollable_id=paid_course.id,
         )
         StudentCourseAccess.objects.create(
-            workspace=self.ws, student_id=self.student.id, course=self.course,
+            workspace=self.ws, student_id=self.student.id, course=paid_course,
             expires_at=timezone.now() - timedelta(days=1),
         )
         self.assertFalse(lesson_accessible(
-            workspace_id=self.ws.id, student_id=self.student.id, lesson_id=self.paid_lesson.id
+            workspace_id=self.ws.id, student_id=self.student.id, lesson_id=paid_lesson2.id
         ))

@@ -311,6 +311,7 @@ class ErrorCode(models.TextChoices):
     QUOTE_STALE = "QUOTE_STALE", "Upgrade quote is stale"
     UPGRADE_WOULD_SHORTEN_PERIOD = "UPGRADE_WOULD_SHORTEN_PERIOD", "Upgrade would shorten coverage period"
     UPGRADE_MIN_CHARGE = "UPGRADE_MIN_CHARGE", "Upgrade charge below minimum"
+    INVALID_UPGRADE_CHARGE = "INVALID_UPGRADE_CHARGE", "Upgrade charge is invalid (zero, negative, or below minimum)"
     UPGRADE_MIN_REMAINING = "UPGRADE_MIN_REMAINING", "Insufficient days remaining for this upgrade type"
     UPGRADE_NOT_ELIGIBLE = "UPGRADE_NOT_ELIGIBLE", "Not eligible for upgrade"
     # Payments
